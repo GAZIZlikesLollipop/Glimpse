@@ -1,7 +1,6 @@
 package org.app.glimpse.data
 
 import java.time.OffsetDateTime
-import java.time.OffsetTime
 
 data class Message(
     val id: Long,
@@ -14,12 +13,18 @@ data class Chat(
     val id: Long,
     val messages: List<Message>
 )
+
+data class UserFriend(
+    val data: User,
+    val chat: Chat,
+)
+
 data class User(
     val id: Long,
     val name: String,
     val avatar: String,
-    val location: Double,
+    val latitude: Double,
+    val longitude: Double,
     val lastOnline: OffsetDateTime,
-    val friends: List<User>,
-    val chats: List<Chat>
+    val friends: List<UserFriend>,
 )

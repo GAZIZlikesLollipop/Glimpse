@@ -4,20 +4,28 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
+import androidx.navigation.compose.rememberNavController
 import com.yandex.mapkit.MapKitFactory
-import com.yandex.mapkit.mapview.MapView
-import org.app.glimpse.pressentation.components.BaseScreen
 import org.app.glimpse.pressentation.theme.GlimpseTheme
 
-lateinit var mapView: MapView
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mapView = MapView(this)
         enableEdgeToEdge()
         setContent {
             GlimpseTheme {
-                BaseScreen()
+                val navController = rememberNavController()
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ){ paddingValues ->
+                    Navigation(
+                        navController = navController,
+                        padding = paddingValues
+                    )
+                }
             }
         }
     }
@@ -25,11 +33,9 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         MapKitFactory.getInstance().onStart()
-        mapView.onStart()
     }
 
     override fun onStop() {
-        mapView.onStop()
         MapKitFactory.getInstance().onStop()
         super.onStop()
     }

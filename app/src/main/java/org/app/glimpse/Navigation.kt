@@ -17,14 +17,14 @@ fun Navigation(
         startDestination = Route.Main.route
     ){
         composable(Route.Main.route){
-            MainScreen()
+            MainScreen(padding)
         }
     }
 }
 
 sealed class Route(val route: String){
     object Main: Route("main")
-    object Chats: Route("chats")
     object Chat: Route("chat/{id}"){ fun createRoute(id:Long) = "chat/$id" }
     object Profile: Route("profile")
+    object Settings: Route("settings")
 }
