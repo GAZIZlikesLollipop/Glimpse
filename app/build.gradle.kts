@@ -58,4 +58,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.maps.mobile)
+    implementation(libs.coil.compose)
+    implementation(libs.coil3.coil.network.okhttp)
 }

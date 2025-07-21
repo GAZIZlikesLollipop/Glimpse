@@ -5,12 +5,14 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import org.app.glimpse.data.ApiViewModel
 import org.app.glimpse.pressentation.screen.MainScreen
 
 @Composable
 fun Navigation(
     navController: NavHostController,
-    padding: PaddingValues
+    padding: PaddingValues,
+    apiViewModel: ApiViewModel
 ){
     NavHost(
         navController = navController,
