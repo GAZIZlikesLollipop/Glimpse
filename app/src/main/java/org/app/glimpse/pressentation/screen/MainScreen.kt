@@ -3,6 +3,11 @@
 package org.app.glimpse.pressentation.screen
 
 import android.graphics.PointF
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +54,7 @@ import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.navigation.NavController
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
@@ -57,6 +63,7 @@ import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import org.app.glimpse.R
+import org.app.glimpse.Route
 import org.app.glimpse.data.Friend
 import org.app.glimpse.data.FriendUser
 import org.app.glimpse.pressentation.components.ChatCard
@@ -102,7 +109,7 @@ val testFriends = listOf(
             avatar = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTP0KtXQ5ov5a9PoDEWxGpv1AL83o8As6y5cw&s",
             latitude = 41.232697,
             longitude = 69.335182,
-            lastOnline = OffsetDateTime.now().minusHours(1),
+            lastOnline = OffsetDateTime.now(),//.minusHours(3),
             friends = emptyList(),
             createdAt = OffsetDateTime.now().minusDays(3),
             updatedAt = OffsetDateTime.now().minusDays(1)
@@ -112,7 +119,8 @@ val testFriends = listOf(
 
 @Composable
 fun MainScreen(
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    navController: NavController
 ){
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -122,6 +130,7 @@ fun MainScreen(
     var isChats by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cnt = stringArrayResource(R.array.main_cnt)
+    var isAdd by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(isDarkTheme) {
         mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
@@ -197,7 +206,7 @@ fun MainScreen(
                 Icon(
                    imageVector = ImageVector.vectorResource(R.drawable.navigation),
                     contentDescription = "",
-                    modifier = Modifier.size((windowInfo.containerSize.width/35).dp)
+                    modifier = Modifier.size((windowInfo.containerSize.width/36).dp)
                 )
             }
 
@@ -245,60 +254,94 @@ fun MainScreen(
                 sheetState = sheetState,
                 modifier = Modifier.fillMaxSize().padding(top = paddingValues.calculateTopPadding())
             ) {
-                Box(Modifier.fillMaxSize()){
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        ) {
-                            Text(
-                                text = cnt[0],
-                                color = MaterialTheme.colorScheme.onBackground,
-                                style = MaterialTheme.typography.displayMedium
-                            )
-                        }
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(12.dp)
-                        ) {
-                            items(testFriends) {
-                                ChatCard(
-                                    data = it,
-                                    onLocation = {
-                                        isChats = false
-                                        mapView.apply {
-                                            mapWindow.map.move( CameraPosition(
-                                                Point(it.data.latitude,it.data.longitude),
-                                                18.0f,
-                                                0f,
-                                                0f,
-                                            ),
-                                                Animation(Animation.Type.SMOOTH,1.0f),
-                                                {}
-                                            )
-                                        }
-                                    },
-                                    onChat = {}
-                                )
-                            }
+                AnimatedContent(
+                    targetState = isAdd,
+                    transitionSpec = {
+                        if(!isAdd) {
+                            slideInHorizontally(tween(450,50),{it}) togetherWith slideOutHorizontally(tween(550,50),{-it})
+                        } else {
+                            slideInHorizontally(tween(450,50),{-it}) togetherWith slideOutHorizontally(tween(550,50),{it})
                         }
                     }
-                    Box (modifier = Modifier.align(Alignment.BottomEnd).padding(paddingValues).padding(horizontal = 12.dp)){
-                        Button(
-                            onClick = {},
-                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground),
-                            colors = ButtonDefaults.buttonColors(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.onBackground
-                            ),
-                            contentPadding = PaddingValues(0.dp),
-                            modifier = Modifier.size((windowInfo.containerSize.width / 22).dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Add,
-                                contentDescription = "",
-                                modifier = Modifier.size((windowInfo.containerSize.width / 42).dp)
-                            )
+                ) { state ->
+                    if (!state) {
+                        Box(Modifier.fillMaxSize()) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                ) {
+                                    Text(
+                                        text = cnt[0],
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        style = MaterialTheme.typography.displayMedium
+                                    )
+                                }
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    contentPadding = PaddingValues(12.dp)
+                                ) {
+                                    items(testFriends) {
+                                        ChatCard(
+                                            data = it,
+                                            onLocation = {
+                                                isChats = false
+                                                mapView.apply {
+                                                    mapWindow.map.move(
+                                                        CameraPosition(
+                                                            Point(
+                                                                it.data.latitude,
+                                                                it.data.longitude
+                                                            ),
+                                                            18.0f,
+                                                            0f,
+                                                            0f,
+                                                        ),
+                                                        Animation(Animation.Type.SMOOTH, 1.0f),
+                                                        {}
+                                                    )
+                                                }
+                                            },
+                                            onChat = {
+                                                isChats = false
+                                                navController.navigate(Route.Chat.createRoute(it.id))
+                                            },
+                                            onProfile = {
+                                                isChats = false
+                                                navController.navigate(Route.Profile.createRoute(it.userId))
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(paddingValues)
+                                    .padding(horizontal = 12.dp)
+                            ) {
+                                Button(
+                                    onClick = { isAdd = true },
+                                    border = BorderStroke(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.onBackground
+                                    ),
+                                    colors = ButtonDefaults.buttonColors(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.onBackground
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.size((windowInfo.containerSize.width / 22).dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Add,
+                                        contentDescription = "",
+                                        modifier = Modifier.size((windowInfo.containerSize.width / 42).dp)
+                                    )
+                                }
+                            }
                         }
+                    } else {
+
                     }
                 }
             }

@@ -30,7 +30,8 @@ import org.app.glimpse.data.Friend
 fun ChatCard(
     data: Friend,
     onLocation: () -> Unit,
-    onChat: () -> Unit
+    onChat: () -> Unit,
+    onProfile: () -> Unit,
 ){
     val windowInfo = LocalWindowInfo.current
     val width = windowInfo.containerSize.width.dp
@@ -38,15 +39,15 @@ fun ChatCard(
         modifier = Modifier.width(width),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ){
+    ) {
         AsyncImage(
             model = data.data.avatar,
             contentDescription = "",
             contentScale = ContentScale.FillBounds,
             modifier = Modifier
-                .size((windowInfo.containerSize.width/18).dp)
+                .size((windowInfo.containerSize.width / 18).dp)
                 .clip(RoundedCornerShape(25.dp))
-                .clickable{}
+                .clickable { onProfile() }
         )
         Text(
             text = data.data.userName,

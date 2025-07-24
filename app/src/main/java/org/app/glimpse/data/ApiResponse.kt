@@ -48,6 +48,7 @@ data class User(
     val id: Long,
     val name: String,
     val password: String,
+    val bio: String,
     val avatar: String,
     val latitude: Double,
     val longitude: Double,
