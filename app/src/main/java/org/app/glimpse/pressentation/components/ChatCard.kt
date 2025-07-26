@@ -24,11 +24,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.app.glimpse.R
-import org.app.glimpse.data.Friend
+import org.app.glimpse.data.FriendUser
 
 @Composable
 fun ChatCard(
-    data: Friend,
+    friend: FriendUser,
     onLocation: () -> Unit,
     onChat: () -> Unit,
     onProfile: () -> Unit,
@@ -41,7 +41,7 @@ fun ChatCard(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         AsyncImage(
-            model = data.data.avatar,
+            model = friend.avatar,
             contentDescription = "",
             contentScale = ContentScale.FillBounds,
             modifier = Modifier
@@ -50,7 +50,7 @@ fun ChatCard(
                 .clickable { onProfile() }
         )
         Text(
-            text = data.data.userName,
+            text = friend.userName,
             style = MaterialTheme.typography.titleLarge,
             maxLines = 1,
             modifier = Modifier.weight(1f),
@@ -67,7 +67,7 @@ fun ChatCard(
         ) {
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.my_location),
-                contentDescription = ""
+                contentDescription = "navigate to friend location"
             )
         }
         Button(
@@ -77,7 +77,7 @@ fun ChatCard(
         ) {
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.chat),
-                contentDescription = ""
+                contentDescription = "navigate to chat screen"
             )
         }
     }

@@ -1,5 +1,7 @@
 package org.app.glimpse
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -23,18 +25,21 @@ fun Navigation(
         startDestination = Route.Main.route
     ){
         composable(Route.Main.route){
-            MainScreen(padding, navController)
+            MainScreen(padding, navController,apiViewModel)
         }
         composable(
             route = Route.Chat.route,
             arguments = listOf(navArgument("friendId"){type = NavType.LongType})
         ){
-            val id = it.arguments?.getLong("friendId") ?: 0
-            ChatScreen(id,padding,navController)
+            val friendId = it.arguments?.getLong("friendId") ?: 0
+            ChatScreen(friendId,padding,navController,apiViewModel)
         }
         composable(
             route = Route.Profile.route,
-            arguments = listOf(navArgument("id"){type = NavType.LongType})
+            arguments = listOf(navArgument("id"){type = NavType.LongType}),
+            enterTransition = {
+                slideInHorizontally(tween(450,50))
+            }
         ) {
             ProfileScreen()
         }
@@ -44,6 +49,6 @@ fun Navigation(
 sealed class Route(val route: String){
     object Main: Route("main")
     object Chat: Route("chat/{friendId}"){ fun createRoute(friendId: Long) = "chat/$friendId" }
-    object Profile: Route("profile/{id}"){ fun createRoute(id:Long) = "chat/$id" }
+    object Profile: Route("profile/{id}"){ fun createRoute(id:Long) = "profile/$id" }
     object Settings: Route("settings")
 }

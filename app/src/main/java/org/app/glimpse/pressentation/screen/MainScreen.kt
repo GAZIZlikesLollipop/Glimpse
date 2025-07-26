@@ -2,7 +2,6 @@
 
 package org.app.glimpse.pressentation.screen
 
-import android.graphics.PointF
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
@@ -64,63 +63,14 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import org.app.glimpse.R
 import org.app.glimpse.Route
-import org.app.glimpse.data.Friend
-import org.app.glimpse.data.FriendUser
+import org.app.glimpse.data.ApiViewModel
 import org.app.glimpse.pressentation.components.ChatCard
-import java.time.OffsetDateTime
-
-val testFriends = listOf(
-    Friend(
-        id = 0,
-        userId = 1,
-        messages = emptyList(),
-        data = FriendUser(
-            userName = "Furiya",
-            avatar = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSmGjt5BrPeTNQMuCNHnIAPjzPzi-SJRKqqxA&s",
-            latitude = 41.216728,
-            longitude = 69.335105,
-            lastOnline = OffsetDateTime.now(),
-            friends = emptyList(),
-            createdAt = OffsetDateTime.now().minusWeeks(1),
-            updatedAt = OffsetDateTime.now().minusDays(2)
-        )
-    ),
-    Friend(
-        id = 1,
-        userId = 0,
-        messages = emptyList(),
-        data = FriendUser(
-            userName = "D. Tramp",
-            avatar = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse1.mm.bing.net%2Fth%2Fid%2FOIP.-O8kGYxjDkwOldLaV9HL1AHaFW%3Fr%3D0%26pid%3DApi&f=1&ipt=a0dc84ded74f9869574f695c92874028aa9553d5d787c2d4865ba8fc72bbb04b&ipo=images",
-            latitude = 41.216195,
-            longitude = 69.335341,
-            lastOnline = OffsetDateTime.now().minusHours(6),
-            friends = emptyList(),
-            createdAt = OffsetDateTime.now().minusYears(1),
-            updatedAt = OffsetDateTime.now().minusMonths(1)
-        )
-    ),
-    Friend(
-        id = 2,
-        userId = 2,
-        messages = emptyList(),
-        data = FriendUser(
-            userName = "Vanya2077",
-            avatar = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTP0KtXQ5ov5a9PoDEWxGpv1AL83o8As6y5cw&s",
-            latitude = 41.232697,
-            longitude = 69.335182,
-            lastOnline = OffsetDateTime.now(),//.minusHours(3),
-            friends = emptyList(),
-            createdAt = OffsetDateTime.now().minusDays(3),
-            updatedAt = OffsetDateTime.now().minusDays(1)
-        )
-    )
-)
 
 @Composable
 fun MainScreen(
     paddingValues: PaddingValues,
-    navController: NavController
+    navController: NavController,
+    apiViewModel: ApiViewModel
 ){
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -146,23 +96,22 @@ fun MainScreen(
                     mapWindow.map.mapObjects.addPlacemark().apply {
                         geometry = point
                         setText(
-                            "User",
+                            apiViewModel.userData.name,
                             TextStyle().apply {
                                 this.placement = TextStyle.Placement.BOTTOM
                                 this.offset = -10.0f
-                                this.size = 10f
+                                this.size = 12f
+                                this.color = 1
                             }
                         )
-                        useCompositeIcon().apply {
-                            setIcon(
-                                ImageProvider.fromResource(context, R.drawable.navigation),
-                                IconStyle().apply {
-                                    anchor = PointF(0.5f, 0.5f)
-                                    scale = 0.3f
-                                    flat = true
-                                }
-                            )
-                        }
+                        setIcon(
+                            ImageProvider.fromResource(context, R.drawable.my_location),
+                            IconStyle().apply {
+//                                anchor = PointF(0.5f, 0.5f)
+                                scale = 1f
+                                zIndex = 10f
+                            }
+                        )
                     }
                     mapWindow.map.move(
                     CameraPosition(
@@ -205,7 +154,7 @@ fun MainScreen(
             ) {
                 Icon(
                    imageVector = ImageVector.vectorResource(R.drawable.navigation),
-                    contentDescription = "",
+                    contentDescription = "navigate to your location",
                     modifier = Modifier.size((windowInfo.containerSize.width/36).dp)
                 )
             }
@@ -224,7 +173,7 @@ fun MainScreen(
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.group),
-                    contentDescription = "",
+                    contentDescription = "Friends",
                     modifier = Modifier.size((windowInfo.containerSize.width/34).dp)
                 )
             }
@@ -280,17 +229,17 @@ fun MainScreen(
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
                                     contentPadding = PaddingValues(12.dp)
                                 ) {
-                                    items(testFriends) {
+                                    items(apiViewModel.userData.friends) {
                                         ChatCard(
-                                            data = it,
+                                            friend = it,
                                             onLocation = {
                                                 isChats = false
                                                 mapView.apply {
                                                     mapWindow.map.move(
                                                         CameraPosition(
                                                             Point(
-                                                                it.data.latitude,
-                                                                it.data.longitude
+                                                                it.latitude,
+                                                                it.longitude
                                                             ),
                                                             18.0f,
                                                             0f,
@@ -307,7 +256,7 @@ fun MainScreen(
                                             },
                                             onProfile = {
                                                 isChats = false
-                                                navController.navigate(Route.Profile.createRoute(it.userId))
+                                                navController.navigate(Route.Profile.createRoute(it.id))
                                             }
                                         )
                                     }
@@ -334,7 +283,7 @@ fun MainScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.Add,
-                                        contentDescription = "",
+                                        contentDescription = "Add friend",
                                         modifier = Modifier.size((windowInfo.containerSize.width / 42).dp)
                                     )
                                 }

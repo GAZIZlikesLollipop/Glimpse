@@ -8,39 +8,11 @@ import java.time.OffsetDateTime
 data class Message(
     val id: Long,
     val content: String,
-    val owner: User,
-    val createdDate: OffsetDateTime,
-    val updateDate: OffsetDateTime
-)
-
-@Serializable
-data class FriendData(
-    val id: Long,
-    val userName: String,
-    val avatar: String,
-    val city: String,
-    val friends: List<FriendData>,
-    @SerialName("created_at") val createdAt: OffsetDateTime
-)
-
-@Serializable
-data class FriendUser(
-    val userName: String,
-    val avatar: String,
-    val latitude: Double,
-    val longitude: Double,
-    val lastOnline: OffsetDateTime,
-    val friends: List<FriendData>,
+    val isChecked: Boolean = false,
+    val senderId: Long? = null,
+    val receivedId: Long? = null,
     @SerialName("created_at") val createdAt: OffsetDateTime,
     @SerialName("updated_at") val updatedAt: OffsetDateTime
-)
-
-@Serializable
-data class Friend(
-    val id: Long,
-    @SerialName("user_id") val userId: Long,
-    val messages: List<Message>,
-    val data: FriendUser
 )
 
 @Serializable
@@ -53,8 +25,35 @@ data class User(
     val latitude: Double,
     val longitude: Double,
     val lastOnline: OffsetDateTime,
-    val friends: List<Friend>,
+    val friends: List<FriendUser>,
+    val sentMessages: List<Message>,
+    val receivedMessages: List<Message>,
     @SerialName("created_at") val createdAt: OffsetDateTime,
     @SerialName("updated_at") val updatedAt: OffsetDateTime
+)
 
+@Serializable
+data class FriendData(
+    val id: Long,
+    val userName: String,
+    val avatar: String,
+    val bio: String,
+    val city: String,
+    val friends: List<FriendData>,
+    @SerialName("created_at") val createdAt: OffsetDateTime,
+    @SerialName("updated_at") val updatedAt: OffsetDateTime
+)
+
+@Serializable
+data class FriendUser(
+    val id: Long,
+    val userName: String,
+    val avatar: String,
+    val bio: String,
+    val latitude: Double,
+    val longitude: Double,
+    val lastOnline: OffsetDateTime,
+    val friends: List<FriendData>,
+    @SerialName("created_at") val createdAt: OffsetDateTime,
+    @SerialName("updated_at") val updatedAt: OffsetDateTime
 )

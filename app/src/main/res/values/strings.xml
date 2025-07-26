@@ -3,4 +3,8 @@
     <string-array name="main_cnt">
         <item>Friends</item>
     </string-array>
+
+    <string-array name="chat_cnt">
+
+    </string-array>
 </resources>
