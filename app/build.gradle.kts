@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
 android {
@@ -11,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "org.app.glimpse"
-        minSdk = 29
+        minSdk = 31
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -60,4 +61,15 @@ dependencies {
     implementation(libs.maps.mobile)
     implementation(libs.coil.compose)
     implementation(libs.coil3.coil.network.okhttp)
+    // Ядро клиента Ktor
+    implementation(libs.ktor.client.core) // Проверьте наличие последней стабильной версии
+    // Движок клиента Ktor (выберите один - CIO часто хорош для Android)
+    implementation(libs.ktor.client.cio) // Или 'ktor-client-okhttp', 'ktor-client-android'
+    // Ktor Content Negotiation (для сериализации/десериализации JSON)
+    implementation(libs.ktor.client.content.negotiation)
+    // Kotlinx Serialization (для преобразования JSON)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.kotlinx.datetime) // Актуальная версия kotlinx-datetime
+    // Опционально: Логирование (очень полезно для отладки сетевых запросов)
+    implementation("io.ktor:ktor-client-logging:3.2.3")
 }

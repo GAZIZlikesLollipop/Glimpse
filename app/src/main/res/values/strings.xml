@@ -5,6 +5,23 @@
     </string-array>
 
     <string-array name="chat_cnt">
+        <item>online</item>
+        <item>seconds ago</item>
+        <item>minutes ago</item>
+        <item>hours ago</item>
+        <item>days ago</item>
+        <item>months ago</item>
+        <item>years ago</item>
+        <item>Enter a message…</item>
+    </string-array>
 
+    <string-array name="profile_cnt">
+        <item>Friends</item>
+        <item>Join in</item>
+        <item>Settings</item>
+    </string-array>
+
+    <string-array name="settings">
+        <item>language</item>
     </string-array>
 </resources>

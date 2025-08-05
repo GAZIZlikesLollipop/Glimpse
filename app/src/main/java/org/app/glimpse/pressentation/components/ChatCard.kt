@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.app.glimpse.R
-import org.app.glimpse.data.FriendUser
+import org.app.glimpse.data.network.FriendUser
 
 @Composable
 fun ChatCard(
@@ -50,7 +50,7 @@ fun ChatCard(
                 .clickable { onProfile() }
         )
         Text(
-            text = friend.userName,
+            text = friend.name,
             style = MaterialTheme.typography.titleLarge,
             maxLines = 1,
             modifier = Modifier.weight(1f),

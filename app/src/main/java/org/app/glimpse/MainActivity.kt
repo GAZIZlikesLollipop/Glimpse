@@ -4,21 +4,28 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.yandex.mapkit.MapKitFactory
-import org.app.glimpse.data.ApiViewModel
+import org.app.glimpse.data.network.ApiService
+import org.app.glimpse.data.network.ApiViewModel
+import org.app.glimpse.data.network.ApiViewModelFactory
+import org.app.glimpse.data.repository.ApiRepository
 import org.app.glimpse.pressentation.theme.GlimpseTheme
 
 class MainActivity : ComponentActivity() {
+    lateinit var apiViewModel: ApiViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val apiViewModel: ApiViewModel = viewModel()
+            val apiRepository = ApiRepository(ApiService.httpClient)
+            apiViewModel = viewModels<ApiViewModel>{
+                ApiViewModelFactory(apiRepository)
+            }.value
             val navController = rememberNavController()
             GlimpseTheme {
                 Scaffold(
@@ -26,8 +33,7 @@ class MainActivity : ComponentActivity() {
                 ){ paddingValues ->
                     Navigation(
                         navController = navController,
-                        padding = paddingValues,
-                        apiViewModel = apiViewModel
+                        padding = paddingValues
                     )
                 }
             }

@@ -28,8 +28,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,14 +43,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import org.app.glimpse.R
-import org.app.glimpse.data.ApiViewModel
+import org.app.glimpse.data.network.ApiState
+import org.app.glimpse.data.network.ApiViewModel
+import org.app.glimpse.data.network.Message
+import org.app.glimpse.data.network.User
 import java.time.Duration
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 
 @Composable
@@ -56,213 +65,250 @@ fun ChatScreen(
     navController: NavController,
     apiViewModel: ApiViewModel
 ) {
-    val messages =
-        (apiViewModel.userData.sentMessages + apiViewModel.userData.receivedMessages).sortedBy { it.createdAt }
-    val windowInfo = LocalWindowInfo.current
-    val data = apiViewModel.userData.friends.find { it.id == friendId }
-    val timeDiff = Duration.between(data?.lastOnline, OffsetDateTime.now())
-    val lastOnline =
-        if (timeDiff.toSeconds() < 3) {
-            "online"
-        } else {
-            when {
-                timeDiff.toSeconds() < 60 -> "${timeDiff.toSeconds()} seconds ago"
-                timeDiff.toMinutes() < 60 -> "${timeDiff.toMinutes()} minutes ago"
-                timeDiff.toHours() < 24 -> "${timeDiff.toHours()} hours ago"
-                timeDiff.toDays() < 30 -> "${timeDiff.toDays()} days ago"
-                timeDiff.toDays() < 365 -> "${timeDiff.toDays() / 30.44} months ago"
-                else -> "${timeDiff.toDays() / 365} years ago"
+    val apiState by apiViewModel.userData.collectAsState()
+    if(apiState is ApiState.Success) {
+        val userData = (apiState as ApiState.Success).data as User
+        val rawMessages = (userData.sentMessages.filter { it.receivedId == friendId } + userData.receivedMessages.filter { it.senderId == friendId }).sortedBy { it.createdAt }
+        val windowInfo = LocalWindowInfo.current
+        val data = userData.friends.find { it.id == friendId }
+        val t = data?.lastOnline
+        val time = LocalDateTime.of(
+            t!!.year,
+            t.monthNumber,
+            t.dayOfMonth,
+            t.hour,
+            t.minute,
+            t.second,
+            t.nanosecond
+        )
+        val timeDiff = Duration.between(time, LocalDateTime.now())
+        val cnt = stringArrayResource(R.array.chat_cnt)
+        val lastOnline =
+            if (timeDiff.toSeconds() < 3) {
+                cnt[0]
+            } else {
+                when {
+                    timeDiff.toSeconds() < 60 -> "${timeDiff.toSeconds()} ${cnt[1]}"
+                    timeDiff.toMinutes() < 60 -> "${timeDiff.toMinutes()} ${cnt[2]}"
+                    timeDiff.toHours() < 24 -> "${timeDiff.toHours()} ${cnt[3]}"
+                    timeDiff.toDays() < 30 -> "${timeDiff.toDays()} ${cnt[4]}"
+                    timeDiff.toDays() < 365 -> "${timeDiff.toDays() / 30.44} ${cnt[5]}"
+                    else -> "${timeDiff.toDays() / 365} ${cnt[6]}"
+                }
             }
+        var chatMessage by rememberSaveable { mutableStateOf("") }
+        val messages = remember { mutableStateMapOf<String, List<Message>>() }
+        LaunchedEffect(Unit) {
+            messages.putAll(groupingMessages(rawMessages))
         }
-    var chatMessage by rememberSaveable { mutableStateOf("") }
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .padding(top = paddingValues.calculateTopPadding()),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            AsyncImage(
-                model = data?.avatar,
-                contentDescription = "",
-                contentScale = ContentScale.FillBounds,
+            Row(
                 modifier = Modifier
-                    .size((windowInfo.containerSize.width / 22).dp)
-                    .clip(RoundedCornerShape(20.dp))
-            )
-            Column {
-                Text(
-                    data?.userName ?: "",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = lastOnline,
-                    color = if (timeDiff.toSeconds() < 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(
-                        0.5f
-                    )
-                )
-            }
-            Button(
-                onClick = { navController.popBackStack() },
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(
-                    Color.Transparent,
-                    MaterialTheme.colorScheme.onBackground
-                ),
-                shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground.copy(0.8f)),
-                modifier = Modifier.size((windowInfo.containerSize.width / 30).dp)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .padding(top = paddingValues.calculateTopPadding()),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = ""
+                AsyncImage(
+                    model = data?.avatar,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .size((windowInfo.containerSize.width / 22).dp)
+                        .clip(RoundedCornerShape(20.dp))
                 )
+                Column {
+                    Text(
+                        data?.name ?: "",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = lastOnline,
+                        color = if (timeDiff.toSeconds() < 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(
+                            0.5f
+                        )
+                    )
+                }
+                Button(
+                    onClick = { navController.popBackStack() },
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        Color.Transparent,
+                        MaterialTheme.colorScheme.onBackground
+                    ),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.onBackground.copy(0.8f)),
+                    modifier = Modifier.size((windowInfo.containerSize.width / 30).dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Back"
+                    )
+                }
             }
-        }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Text(
-//                    when {
-//                        it.createdAt.dayOfMonth == OffsetDateTime.now().dayOfMonth -> "Today"
-//                        it.createdAt == OffsetDateTime.now().minusDays(1) -> "Yesterday"
-//                        else -> "${it.createdAt.dayOfMonth} july"
-//                    },
-                    "Today",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
-                )
-            }
-            items(messages) {
-                if (it.senderId == apiViewModel.userData.id) {
-                    Row(
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(messages.toList()) { (date, messages) ->
+                    Text(
+                        date,
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(
-                                topStart = 24.dp,
-                                topEnd = 0.dp,
-                                bottomEnd = 24.dp,
-                                bottomStart = 24.dp
-                            ),
-                            modifier = Modifier.padding(8.dp),
-                            colors = CardDefaults.cardColors(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.onBackground
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.End
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
+                    )
+                    messages.forEach {
+                        if (it.senderId == userData.id) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Text(it.content)
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                Card(
+                                    shape = RoundedCornerShape(
+                                        topStart = 24.dp,
+                                        topEnd = 0.dp,
+                                        bottomEnd = 24.dp,
+                                        bottomStart = 24.dp
+                                    ),
+                                    modifier = Modifier.padding(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.onBackground
+                                    )
                                 ) {
-                                    Text(
-                                        "${it.createdAt.hour}:${it.createdAt.minute}",
-                                        color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
-                                        style = MaterialTheme.typography.labelLarge
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        Text(it.content)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                "${it.createdAt.hour}:${it.createdAt.minute}",
+                                                color = MaterialTheme.colorScheme.onBackground.copy(
+                                                    0.5f
+                                                ),
+                                                style = MaterialTheme.typography.labelLarge
+                                            )
+                                            Icon(
+                                                imageVector =
+                                                    if (it.isChecked) ImageVector.vectorResource(R.drawable.done_all) else Icons.Rounded.Check,
+                                                contentDescription = "isChecked",
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Card(
+                                    shape = RoundedCornerShape(
+                                        topStart = 0.dp,
+                                        topEnd = 24.dp,
+                                        bottomEnd = 24.dp,
+                                        bottomStart = 24.dp
+                                    ),
+                                    modifier = Modifier.padding(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        MaterialTheme.colorScheme.surfaceContainer,
+                                        MaterialTheme.colorScheme.onBackground
                                     )
-                                    Icon(
-                                        imageVector =
-                                            if (it.isChecked) ImageVector.vectorResource(R.drawable.done_all) else Icons.Rounded.Check,
-                                        contentDescription = "isChecked",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        Text(it.content)
+                                        Text(
+                                            "${it.createdAt.hour}:${it.createdAt.minute}",
+                                            color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(
-                                topStart = 0.dp,
-                                topEnd = 24.dp,
-                                bottomEnd = 24.dp,
-                                bottomStart = 24.dp
-                            ),
-                            modifier = Modifier.padding(8.dp),
-                            colors = CardDefaults.cardColors(
-                                MaterialTheme.colorScheme.surfaceContainer,
-                                MaterialTheme.colorScheme.onBackground
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.End
-                            ) {
-                                Text(it.content)
-                                Text(
-                                    "${it.createdAt.hour}:${it.createdAt.minute}",
-                                    color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-                        }
-                    }
                 }
             }
-        }
 
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = paddingValues.calculateBottomPadding())
-                .padding(16.dp)
-                .background(MaterialTheme.colorScheme.background),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            TextField(
-                value = chatMessage,
-                onValueChange = { chatMessage = it },
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                placeholder = {
-                    Text(
-                        "Enter a message..."
-                    )
-                }
-            )
-            AnimatedVisibility(
-                visible = chatMessage.trim().isNotBlank(),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = paddingValues.calculateBottomPadding())
+                    .padding(16.dp)
+                    .background(MaterialTheme.colorScheme.background),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
-                    onClick = { chatMessage = "" },
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.onBackground
-                    ),
-                    modifier = Modifier.size((windowInfo.containerSize.width / 24).dp)
+                TextField(
+                    value = chatMessage,
+                    onValueChange = { chatMessage = it },
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    placeholder = { Text(cnt[7]) }
+                )
+                AnimatedVisibility(
+                    visible = chatMessage.trim().isNotBlank(),
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = "send"
-                    )
+                    Button(
+                        onClick = { chatMessage = "" },
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.onBackground
+                        ),
+                        modifier = Modifier.size((windowInfo.containerSize.width / 24).dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.Send,
+                            contentDescription = "send"
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-//fun groupingMessages(data: List<Message>): Map<String,List<Message>> {
-//   return emptyMap()
-//}
+fun groupingMessages(data: List<Message>): Map<String,List<Message>> {
+    val resultMap: MutableMap<String,List<Message>> = mutableMapOf()
+    data.forEach {
+        when {
+            it.createdAt.dayOfMonth == OffsetDateTime.now().dayOfMonth -> {
+                val list = resultMap["Today"]?.toMutableList()
+                list?.add(it)
+                resultMap["Today"] = list?.toList() ?: listOf(it)
+            }
+            it.createdAt.dayOfMonth == OffsetDateTime.now().minusDays(1).dayOfMonth -> {
+                val list = resultMap["Yesterday"]?.toMutableList()
+                list?.add(it)
+                resultMap["Yesterday"] = list?.toList() ?: listOf(it)
+            }
+            it.createdAt.dayOfWeek.ordinal > 1 && it.createdAt.dayOfMonth < OffsetDateTime.now().minusDays(1).dayOfMonth -> {
+                val list = resultMap[it.createdAt.dayOfWeek.name]?.toMutableList()
+                list?.add(it)
+                resultMap[it.createdAt.dayOfWeek.name] = list?.toList() ?: listOf(it)
+            }
+            it.createdAt.year == OffsetDateTime.now().year -> {
+                val list = resultMap["${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"]?.toMutableList()
+                list?.add(it)
+                resultMap["${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"] = list?.toList() ?: listOf(it)
+            }
+            else -> {
+                val list = resultMap["${it.createdAt.year} ${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"]?.toMutableList()
+                list?.add(it)
+                resultMap["${it.createdAt.year} ${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"] = list?.toList() ?: listOf(it)
+            }
+        }
+    }
+    return resultMap.toMap()
+}

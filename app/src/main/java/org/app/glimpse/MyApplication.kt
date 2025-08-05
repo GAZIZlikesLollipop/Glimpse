@@ -6,7 +6,7 @@ import com.yandex.mapkit.MapKitFactory
 class MyApplication: Application() {
     override fun onCreate() {
         super.onCreate()
-        MapKitFactory.setApiKey(BuildConfig.apiKey)
+        MapKitFactory.setApiKey(BuildConfig.yandexApiKey)
         MapKitFactory.initialize(this)
     }
 }

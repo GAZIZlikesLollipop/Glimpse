@@ -38,6 +38,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,7 +64,9 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import org.app.glimpse.R
 import org.app.glimpse.Route
-import org.app.glimpse.data.ApiViewModel
+import org.app.glimpse.data.network.ApiState
+import org.app.glimpse.data.network.ApiViewModel
+import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.ChatCard
 
 @Composable
@@ -74,15 +77,16 @@ fun MainScreen(
 ){
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
-    val point = Point(41.216728,69.335105)
     val windowInfo = LocalWindowInfo.current
     val isDarkTheme = isSystemInDarkTheme()
     var isChats by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cnt = stringArrayResource(R.array.main_cnt)
     var isAdd by rememberSaveable { mutableStateOf(false) }
+    val apiState by apiViewModel.userData.collectAsState()
 
     LaunchedEffect(isDarkTheme) {
+        apiViewModel.getOwnData()
         mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
     }
 
@@ -93,34 +97,37 @@ fun MainScreen(
             modifier = Modifier.fillMaxSize(),
             factory = {
                 mapView.apply {
-                    mapWindow.map.mapObjects.addPlacemark().apply {
-                        geometry = point
-                        setText(
-                            apiViewModel.userData.name,
-                            TextStyle().apply {
-                                this.placement = TextStyle.Placement.BOTTOM
-                                this.offset = -10.0f
-                                this.size = 12f
-                                this.color = 1
-                            }
-                        )
-                        setIcon(
-                            ImageProvider.fromResource(context, R.drawable.my_location),
-                            IconStyle().apply {
+                    if(apiState is ApiState.Success) {
+                        val userData = (apiState as ApiState.Success).data as User
+                        mapWindow.map.mapObjects.addPlacemark().apply {
+                            geometry = Point(userData.latitude,userData.longitude)
+                            setText(
+                                userData.name,
+                                TextStyle().apply {
+                                    this.placement = TextStyle.Placement.BOTTOM
+                                    this.offset = -10.0f
+                                    this.size = 12f
+                                    this.color = 1
+                                }
+                            )
+                            setIcon(
+                                ImageProvider.fromResource(context, R.drawable.my_location),
+                                IconStyle().apply {
 //                                anchor = PointF(0.5f, 0.5f)
-                                scale = 1f
-                                zIndex = 10f
-                            }
+                                    scale = 1f
+                                    zIndex = 10f
+                                }
+                            )
+                        }
+                        mapWindow.map.move(
+                            CameraPosition(
+                                Point(userData.latitude,userData.longitude),
+                                18.0f,
+                                0f,
+                                0f
+                            )
                         )
                     }
-                    mapWindow.map.move(
-                    CameraPosition(
-                    point,
-                    18.0f,
-                    0f,
-                     0f
-                         )
-                    )
                 }
             },
             update = {}
@@ -132,16 +139,20 @@ fun MainScreen(
         ) {
             Button(
                 onClick = {
-                    mapView.apply {
-                        mapWindow.map.move( CameraPosition(
-                            point,
-                            18.0f,
-                            0f,
-                            0f,
-                        ),
-                            Animation(Animation.Type.SMOOTH,1.0f),
-                            {}
-                        )
+                    if(apiState is ApiState.Success) {
+                        val userData = (apiState as ApiState.Success).data as User
+                        mapView.apply {
+                            mapWindow.map.move(
+                                CameraPosition(
+                                    Point(userData.latitude, userData.longitude),
+                                    18.0f,
+                                    0f,
+                                    0f,
+                                ),
+                                Animation(Animation.Type.SMOOTH, 1.0f),
+                                {}
+                            )
+                        }
                     }
                 },
                 contentPadding = PaddingValues(0.dp),
@@ -179,7 +190,12 @@ fun MainScreen(
             }
         }
         Button(
-            onClick = {},
+            onClick = {
+                if(apiState is ApiState.Success) {
+                    val userData = (apiState as ApiState.Success).data as User
+                    navController.navigate(Route.Profile.createRoute(userData.id))
+                }
+            },
             shape = CircleShape,
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -197,100 +213,111 @@ fun MainScreen(
                contentDescription = "Settings",
            )
         }
-        if(isChats){
+        if(isChats) {
             ModalBottomSheet(
                 onDismissRequest = { isChats = false },
                 sheetState = sheetState,
                 modifier = Modifier.fillMaxSize().padding(top = paddingValues.calculateTopPadding())
             ) {
-                AnimatedContent(
-                    targetState = isAdd,
-                    transitionSpec = {
-                        if(!isAdd) {
-                            slideInHorizontally(tween(450,50),{it}) togetherWith slideOutHorizontally(tween(550,50),{-it})
-                        } else {
-                            slideInHorizontally(tween(450,50),{-it}) togetherWith slideOutHorizontally(tween(550,50),{it})
+                if (apiState is ApiState.Success) {
+                    val userData = (apiState as ApiState.Success).data as User
+                    AnimatedContent(
+                        targetState = isAdd,
+                        transitionSpec = {
+                            if (!isAdd) {
+                                slideInHorizontally(tween(450, 50),
+                                    { it }) togetherWith slideOutHorizontally(tween(550, 50),
+                                    { -it })
+                            } else {
+                                slideInHorizontally(tween(450, 50),
+                                    { -it }) togetherWith slideOutHorizontally(tween(550, 50),
+                                    { it })
+                            }
                         }
-                    }
-                ) { state ->
-                    if (!state) {
-                        Box(Modifier.fillMaxSize()) {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                ) {
-                                    Text(
-                                        text = cnt[0],
-                                        color = MaterialTheme.colorScheme.onBackground,
-                                        style = MaterialTheme.typography.displayMedium
-                                    )
-                                }
-                                LazyColumn(
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    contentPadding = PaddingValues(12.dp)
-                                ) {
-                                    items(apiViewModel.userData.friends) {
-                                        ChatCard(
-                                            friend = it,
-                                            onLocation = {
-                                                isChats = false
-                                                mapView.apply {
-                                                    mapWindow.map.move(
-                                                        CameraPosition(
-                                                            Point(
-                                                                it.latitude,
-                                                                it.longitude
+                    ) { state ->
+                        if (!state) {
+                            Box(Modifier.fillMaxSize()) {
+                                Column {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    ) {
+                                        Text(
+                                            text = cnt[0],
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                            style = MaterialTheme.typography.displayMedium
+                                        )
+                                    }
+                                    LazyColumn(
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        contentPadding = PaddingValues(12.dp)
+                                    ) {
+                                        items(userData.friends) {
+                                            ChatCard(
+                                                friend = it,
+                                                onLocation = {
+                                                    isChats = false
+                                                    mapView.apply {
+                                                        mapWindow.map.move(
+                                                            CameraPosition(
+                                                                Point(
+                                                                    it.latitude,
+                                                                    it.longitude
+                                                                ),
+                                                                18.0f,
+                                                                0f,
+                                                                0f,
                                                             ),
-                                                            18.0f,
-                                                            0f,
-                                                            0f,
-                                                        ),
-                                                        Animation(Animation.Type.SMOOTH, 1.0f),
-                                                        {}
+                                                            Animation(Animation.Type.SMOOTH, 1.0f),
+                                                            {}
+                                                        )
+                                                    }
+                                                },
+                                                onChat = {
+                                                    isChats = false
+                                                    navController.navigate(Route.Chat.createRoute(it.id))
+                                                },
+                                                onProfile = {
+                                                    isChats = false
+                                                    navController.navigate(
+                                                        Route.Profile.createRoute(
+                                                            it.id
+                                                        )
                                                     )
                                                 }
-                                            },
-                                            onChat = {
-                                                isChats = false
-                                                navController.navigate(Route.Chat.createRoute(it.id))
-                                            },
-                                            onProfile = {
-                                                isChats = false
-                                                navController.navigate(Route.Profile.createRoute(it.id))
-                                            }
+                                            )
+                                        }
+                                    }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(paddingValues)
+                                        .padding(horizontal = 12.dp)
+                                ) {
+                                    Button(
+                                        onClick = { isAdd = true },
+                                        border = BorderStroke(
+                                            2.dp,
+                                            MaterialTheme.colorScheme.onBackground
+                                        ),
+                                        colors = ButtonDefaults.buttonColors(
+                                            Color.Transparent,
+                                            MaterialTheme.colorScheme.onBackground
+                                        ),
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.size((windowInfo.containerSize.width / 22).dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Add,
+                                            contentDescription = "Add friend",
+                                            modifier = Modifier.size((windowInfo.containerSize.width / 42).dp)
                                         )
                                     }
                                 }
                             }
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(paddingValues)
-                                    .padding(horizontal = 12.dp)
-                            ) {
-                                Button(
-                                    onClick = { isAdd = true },
-                                    border = BorderStroke(
-                                        2.dp,
-                                        MaterialTheme.colorScheme.onBackground
-                                    ),
-                                    colors = ButtonDefaults.buttonColors(
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.onBackground
-                                    ),
-                                    contentPadding = PaddingValues(0.dp),
-                                    modifier = Modifier.size((windowInfo.containerSize.width / 22).dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Add,
-                                        contentDescription = "Add friend",
-                                        modifier = Modifier.size((windowInfo.containerSize.width / 42).dp)
-                                    )
-                                }
-                            }
-                        }
-                    } else {
+                        } else {
 
+                        }
                     }
                 }
             }
