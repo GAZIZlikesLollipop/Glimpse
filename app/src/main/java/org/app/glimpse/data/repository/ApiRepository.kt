@@ -31,8 +31,8 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     override suspend fun getUserData(): User {
-        return httpClient.get("https://192.168.13.15:8080/api/users"){
-            header("Authorization", "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VyTmFtZSI6IkJvYiIsImNyYXRlZF9hdCI6IjIwMjUtMDgtMDVUMTg6MTE6NTIuMDU2NjUrMDU6MDAiLCJpc3MiOiJ5b3VyLWdpbi1jcnVkLWFwcCIsInN1YiI6IjEiLCJhdWQiOlsidXNlcnMiXSwiZXhwIjoxNzU0NDg5NTEyLCJuYmYiOjE3NTQ0MDMxMTIsImlhdCI6MTc1NDQwMzExMn0.xKqHtJMw9CFgkq0Lmy_VUbP6l8sy-fbTXWgkT2WzHEgekqdXVsLRdL2cHUjXE2W0FhRRHPxVH5KkDxM_YmMdYQ")
+        return httpClient.get("https://192.168.13.42:8080/api/users"){
+            header("Authorization", "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJ1c2VyTmFtZSI6IlVzZXIiLCJjcmF0ZWRfYXQiOiIyMDI1LTA4LTA4VDE1OjQ4OjQ1LjAzODk2OCswNTowMCIsImlzcyI6InlvdXItZ2luLWNydWQtYXBwIiwic3ViIjoiMiIsImF1ZCI6WyJ1c2VycyJdLCJleHAiOjE3NTQ3MzY2MTMsIm5iZiI6MTc1NDY1MDIxMywiaWF0IjoxNzU0NjUwMjEzfQ.JyjyTs9vXJ21_e2bcHaq4eMG7jTqIuG8Sh9ZCF4iJJVNu22J674fcn0NsGETp0Dv2p0aC3UIUSc1GgckCAxG6g")
         }.body<User>()
     }
 

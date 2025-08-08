@@ -9,8 +9,13 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.Json.Default.serializersModule
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
+import kotlin.time.ExperimentalTime
 
 object ApiService {
+    @OptIn(ExperimentalTime::class)
     val httpClient = HttpClient(CIO){
         install(ContentNegotiation){
             json(
@@ -18,10 +23,7 @@ object ApiService {
                     prettyPrint = true
                     isLenient = true
                     ignoreUnknownKeys = true
-                    coerceInputValues = true
-                    serializersModule = kotlinx.serialization.modules.SerializersModule {
-                        // Здесь можно добавить кастомные сериализаторы, если потребуется
-                    }
+                    serializersModule = SerializersModule { contextual(InstantSerialize) }
                 }
             )
         }

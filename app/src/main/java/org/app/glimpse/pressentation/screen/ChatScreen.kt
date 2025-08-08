@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package org.app.glimpse.pressentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
@@ -49,6 +51,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 import org.app.glimpse.R
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
@@ -57,6 +62,9 @@ import org.app.glimpse.data.network.User
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import kotlin.collections.forEach
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Composable
 fun ChatScreen(
@@ -71,16 +79,7 @@ fun ChatScreen(
         val rawMessages = (userData.sentMessages.filter { it.receivedId == friendId } + userData.receivedMessages.filter { it.senderId == friendId }).sortedBy { it.createdAt }
         val windowInfo = LocalWindowInfo.current
         val data = userData.friends.find { it.id == friendId }
-        val t = data?.lastOnline
-        val time = LocalDateTime.of(
-            t!!.year,
-            t.monthNumber,
-            t.dayOfMonth,
-            t.hour,
-            t.minute,
-            t.second,
-            t.nanosecond
-        )
+        val time = data?.lastOnline?.toLocalDateTime(TimeZone.currentSystemDefault())?.toJavaLocalDateTime()
         val timeDiff = Duration.between(time, LocalDateTime.now())
         val cnt = stringArrayResource(R.array.chat_cnt)
         val lastOnline =
@@ -188,7 +187,7 @@ fun ChatScreen(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             Text(
-                                                "${it.createdAt.hour}:${it.createdAt.minute}",
+                                                "${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).hour}:${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).minute}",
                                                 color = MaterialTheme.colorScheme.onBackground.copy(
                                                     0.5f
                                                 ),
@@ -228,7 +227,7 @@ fun ChatScreen(
                                     ) {
                                         Text(it.content)
                                         Text(
-                                            "${it.createdAt.hour}:${it.createdAt.minute}",
+                                            "${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).hour}:${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).minute}",
                                             color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
                                             style = MaterialTheme.typography.labelLarge
                                         )
@@ -281,32 +280,33 @@ fun ChatScreen(
 
 fun groupingMessages(data: List<Message>): Map<String,List<Message>> {
     val resultMap: MutableMap<String,List<Message>> = mutableMapOf()
-    data.forEach {
+    data.forEach { f ->
+        val it = f.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
         when {
-            it.createdAt.dayOfMonth == OffsetDateTime.now().dayOfMonth -> {
+            it.dayOfMonth == OffsetDateTime.now().dayOfMonth -> {
                 val list = resultMap["Today"]?.toMutableList()
-                list?.add(it)
-                resultMap["Today"] = list?.toList() ?: listOf(it)
+                list?.add(f)
+                resultMap["Today"] = list?.toList() ?: listOf(f)
             }
-            it.createdAt.dayOfMonth == OffsetDateTime.now().minusDays(1).dayOfMonth -> {
+            it.dayOfMonth == OffsetDateTime.now().minusDays(1).dayOfMonth -> {
                 val list = resultMap["Yesterday"]?.toMutableList()
-                list?.add(it)
-                resultMap["Yesterday"] = list?.toList() ?: listOf(it)
+                list?.add(f)
+                resultMap["Yesterday"] = list?.toList() ?: listOf(f)
             }
-            it.createdAt.dayOfWeek.ordinal > 1 && it.createdAt.dayOfMonth < OffsetDateTime.now().minusDays(1).dayOfMonth -> {
-                val list = resultMap[it.createdAt.dayOfWeek.name]?.toMutableList()
-                list?.add(it)
-                resultMap[it.createdAt.dayOfWeek.name] = list?.toList() ?: listOf(it)
+            it.dayOfWeek.ordinal > 1 && it.dayOfMonth < OffsetDateTime.now().minusDays(1).dayOfMonth -> {
+                val list = resultMap[it.dayOfWeek.name]?.toMutableList()
+                list?.add(f)
+                resultMap[it.dayOfWeek.name] = list?.toList() ?: listOf(f)
             }
-            it.createdAt.year == OffsetDateTime.now().year -> {
-                val list = resultMap["${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"]?.toMutableList()
-                list?.add(it)
-                resultMap["${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"] = list?.toList() ?: listOf(it)
+            it.year == OffsetDateTime.now().year -> {
+                val list = resultMap["${it.dayOfMonth} ${it.month.name}"]?.toMutableList()
+                list?.add(f)
+                resultMap["${it.dayOfMonth} ${it.month.name}"] = list?.toList() ?: listOf(f)
             }
             else -> {
-                val list = resultMap["${it.createdAt.year} ${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"]?.toMutableList()
-                list?.add(it)
-                resultMap["${it.createdAt.year} ${it.createdAt.dayOfMonth} ${it.createdAt.month.name}"] = list?.toList() ?: listOf(it)
+                val list = resultMap["${it.year} ${it.dayOfMonth} ${it.month.name}"]?.toMutableList()
+                list?.add(f)
+                resultMap["${it.year} ${it.dayOfMonth} ${it.month.name}"] = list?.toList() ?: listOf(f)
             }
         }
     }

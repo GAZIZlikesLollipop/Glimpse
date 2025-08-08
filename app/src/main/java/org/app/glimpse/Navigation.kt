@@ -16,7 +16,9 @@ import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.pressentation.screen.ChatScreen
 import org.app.glimpse.pressentation.screen.MainScreen
 import org.app.glimpse.pressentation.screen.ProfileScreen
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 @SuppressLint("NewApi")
 @Composable
 fun Navigation(
@@ -54,7 +56,7 @@ fun Navigation(
                 slideOutVertically(tween(450,50))
             }
         ) {
-            val userId = it.arguments?.getLong("userId") ?: 0
+            val userId = it.arguments?.getLong("userId") ?: -1
             ProfileScreen(userId,navController,padding,apiViewModel)
         }
     }
@@ -63,5 +65,5 @@ fun Navigation(
 sealed class Route(val route: String){
     object Main: Route("main")
     object Chat: Route("chat/{friendId}"){ fun createRoute(friendId: Long) = "chat/$friendId" }
-    object Profile: Route("profile/{userId}"){ fun createRoute(userId:Long) = "profile/$userId" }
+    object Profile: Route("profile/{userId}"){ fun createRoute(userId: Long) = "profile/$userId" }
 }

@@ -2,6 +2,7 @@
     <string name="app_name">Glimpse</string>
     <string-array name="main_cnt">
         <item>Friends</item>
+        <item>You don\'t have friends, add it!</item>
     </string-array>
 
     <string-array name="chat_cnt">

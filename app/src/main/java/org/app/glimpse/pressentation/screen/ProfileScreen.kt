@@ -55,7 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toLocalDateTime
 import org.app.glimpse.R
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
@@ -63,7 +65,9 @@ import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.SettingsCard
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.time.ExperimentalTime
 
+@ExperimentalTime
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun ProfileScreen(
@@ -74,7 +78,7 @@ fun ProfileScreen(
 ){
     val apiState by apiViewModel.userData.collectAsState()
     val windowInfo = LocalWindowInfo.current
-    if(apiState is ApiState.Success) {
+    if(userId > -1) {
         val settings = stringArrayResource(R.array.settings)
         var isEdit by rememberSaveable { mutableStateOf(false) }
         val userData = (apiState as ApiState.Success).data as User
@@ -185,7 +189,7 @@ fun ProfileScreen(
                                 modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
                                     .clip(RoundedCornerShape(20.dp)),
                             )
-                            if (userData.createdAt.date != userData.updatedAt.date) {
+                            if (userData.createdAt != userData.updatedAt) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.End,
@@ -200,7 +204,7 @@ fun ProfileScreen(
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(
-                                        text = userData.createdAt.toJavaLocalDateTime().format(
+                                        text = userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime().format(
                                             DateTimeFormatter.ofPattern(
                                                 "yyyy.MM.dd",
                                                 Locale.getDefault()
@@ -225,7 +229,7 @@ fun ProfileScreen(
                         )
                         Text(
                             text = "${cnt[1]} ${
-                                userData.createdAt.toJavaLocalDateTime().format(
+                                userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime().format(
                                     DateTimeFormatter.ofPattern(
                                         "yyyy dd MMMM",
                                         Locale.getDefault()
