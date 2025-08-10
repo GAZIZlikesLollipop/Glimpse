@@ -5,6 +5,7 @@ import android.location.Geocoder
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.valentinilk.shimmer.shimmer
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -318,6 +320,7 @@ fun ProfileScreen(
     } else {
         Column(
             modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Row(
@@ -340,59 +343,80 @@ fun ProfileScreen(
                         contentDescription = "Back"
                     )
                 }
-                Button(
-                    onClick = {},
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                        MaterialTheme.colorScheme.onBackground
-                    ),
-                    modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
-                ) {}
+                Box(
+                    modifier = Modifier
+                        .shimmer()
+                        .clip(RoundedCornerShape(20.dp))
+                        .size((windowInfo.containerSize.width / 26).dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(0.35f))
+                )
             }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .shimmer()
+                        .clip(RoundedCornerShape(20.dp))
+                        .size((windowInfo.containerSize.width / 5).dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+                )
+
+                Box(
+                    modifier = Modifier
+                        .shimmer()
+                        .fillMaxWidth()
+                        .padding(horizontal = 95.dp)
+                        .offset(y = 8.dp, x = (windowInfo.containerSize.width / 25).dp)
+                        .height(24.dp)
+                        .width((windowInfo.containerSize.width / 5).dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+                )
+            }
+
             Box(
-                modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
-                    .clip(RoundedCornerShape(20.dp))
-            )
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).offset(y = 8.dp).height(20.dp).width((windowInfo.containerSize.width/5).dp)
+                modifier = Modifier
+                    .shimmer()
+                    .fillMaxWidth()
+                    .padding(horizontal = 42.dp)
+                    .offset(y = 8.dp)
+                    .height(50.dp)
+                    .width((windowInfo.containerSize.width/5).dp)
+                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
             )
 
-            Box(Modifier
+            Box(
+                modifier = Modifier
+                    .shimmer()
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+                    .offset(y = 8.dp)
+                    .height(36.dp)
+                    .width((windowInfo.containerSize.width/5).dp)
+                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
             )
-//        Text(
-//            text = userData.name,
-//            fontWeight = FontWeight.W600,
-//            fontSize = 42.sp
-//        )
-//        Text(
-//            text = userData.bio,
-//            fontWeight = FontWeight.W700,
-//            fontSize = 30.sp
-//        )
-//        Text(
-//            text = "${cnt[1]} ${
-//                userData.createdAt.toJavaLocalDateTime().format(
-//                    DateTimeFormatter.ofPattern(
-//                        "yyyy dd MMMM",
-//                        Locale.getDefault()
-//                    )
-//                )
-//            }",
-//            fontWeight = FontWeight.W600,
-//            fontSize = 24.sp,
-//            color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
-//        )
-//        if (geocodeState is ApiState.Success) {
-//            Text(
-//                (geocodeState as ApiState.Success).data.toString(),
-//                color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
-//                fontWeight = FontWeight.W600,
-//                style = MaterialTheme.typography.titleLarge,
-//                modifier = Modifier.padding(horizontal = 16.dp)
-//            )
-//        }
+            Box(
+                modifier = Modifier
+                    .shimmer()
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .offset(y = 8.dp)
+                    .height(32.dp)
+                    .width((windowInfo.containerSize.width/5).dp)
+                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+            )
+            Box(
+                modifier = Modifier
+                    .shimmer()
+                    .fillMaxWidth()
+                    .padding(horizontal = 50.dp)
+                    .offset(y = 8.dp)
+                    .height(32.dp)
+                    .width((windowInfo.containerSize.width/5).dp)
+                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+            )
         }
     }
 }

@@ -5,9 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.app.glimpse.data.repository.ApiRepository
+import org.app.glimpse.data.repository.JWTRepository
 import java.util.Locale
 
 sealed interface ApiState {
@@ -17,7 +20,10 @@ sealed interface ApiState {
     object Error: ApiState
 }
 
-class ApiViewModel(val apiRepository: ApiRepository): ViewModel() {
+class ApiViewModel(
+    val apiRepository: ApiRepository,
+    val jwtRepository: JWTRepository
+): ViewModel() {
 
     private val _geocoderState = MutableStateFlow<ApiState>(ApiState.Loading)
     val geocoderState = _geocoderState.asStateFlow()
@@ -38,11 +44,18 @@ class ApiViewModel(val apiRepository: ApiRepository): ViewModel() {
     private val _userData = MutableStateFlow<ApiState>(ApiState.Initial)
     val userData = _userData.asStateFlow()
 
+    val token = jwtRepository.token
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            ""
+        )
+
     fun getOwnData(){
         _userData.value = ApiState.Loading
         viewModelScope.launch {
             _userData.value = try {
-                ApiState.Success(apiRepository.getUserData())
+                ApiState.Success(apiRepository.getUserData(token.value))
             } catch (e: Exception){
                 Log.e("Network",e.localizedMessage ?: "")
                 ApiState.Error
@@ -52,11 +65,14 @@ class ApiViewModel(val apiRepository: ApiRepository): ViewModel() {
 
 }
 
-class ApiViewModelFactory(val apiRepository: ApiRepository): ViewModelProvider.Factory {
+class ApiViewModelFactory(
+    val apiRepository: ApiRepository,
+    val jwtRepository: JWTRepository
+): ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if(modelClass.isAssignableFrom(ApiViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ApiViewModel(apiRepository) as T
+            return ApiViewModel(apiRepository,jwtRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
+import com.valentinilk.shimmer.shimmer
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
@@ -147,23 +148,22 @@ fun MainScreen(
         ) {
             Button(
                 onClick = {
-                    if(apiState is ApiState.Success) {
-                        val userData = (apiState as ApiState.Success).data as User
-                        mapView.apply {
-                            mapWindow.map.move(
-                                CameraPosition(
-                                    Point(userData.latitude, userData.longitude),
-                                    18.0f,
-                                    0f,
-                                    0f,
-                                ),
-                                Animation(Animation.Type.SMOOTH, 1.0f),
-                                {}
-                            )
-                        }
+                    val userData = (apiState as ApiState.Success).data as User
+                    mapView.apply {
+                        mapWindow.map.move(
+                            CameraPosition(
+                                Point(userData.latitude, userData.longitude),
+                                18.0f,
+                                0f,
+                                0f,
+                            ),
+                            Animation(Animation.Type.SMOOTH, 1.0f),
+                            {}
+                        )
                     }
                 },
                 contentPadding = PaddingValues(0.dp),
+                enabled = apiState is ApiState.Success,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.background.copy(0.65f),
                     contentColor = MaterialTheme.colorScheme.onBackground
@@ -334,27 +334,31 @@ fun MainScreen(
                                             ) {
                                                 Box(
                                                     modifier = Modifier
+                                                        .shimmer()
                                                         .clip(RoundedCornerShape(25.dp))
-                                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                                         .size((windowInfo.containerSize.width / 18).dp)
+                                                        .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
                                                 )
                                                 Box(
                                                     modifier = Modifier
-                                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                                        .shimmer()
                                                         .weight(1f)
                                                         .height(30.dp)
+                                                        .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
                                                 )
                                                 Box(
                                                     modifier = Modifier
+                                                        .shimmer()
                                                         .clip(RoundedCornerShape(24.dp))
-                                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                                         .size(50.dp)
+                                                        .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
                                                 )
                                                 Box(
                                                     modifier = Modifier
+                                                        .shimmer()
                                                         .clip(RoundedCornerShape(24.dp))
-                                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                                         .size(50.dp)
+                                                        .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
                                                 )
                                             }
                                         }
@@ -364,7 +368,7 @@ fun MainScreen(
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
-                                    .padding(paddingValues)
+                                    .padding(bottom = paddingValues.calculateBottomPadding())
                                     .padding(horizontal = 12.dp)
                             ) {
                                 Button(

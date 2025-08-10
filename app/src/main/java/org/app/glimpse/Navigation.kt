@@ -6,6 +6,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,8 +16,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.pressentation.screen.ChatScreen
+import org.app.glimpse.pressentation.screen.LoginScreen
 import org.app.glimpse.pressentation.screen.MainScreen
 import org.app.glimpse.pressentation.screen.ProfileScreen
+import org.app.glimpse.pressentation.screen.RegisterScreen
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -26,9 +30,10 @@ fun Navigation(
     padding: PaddingValues
 ){
     val apiViewModel = viewModel<ApiViewModel>()
+    val token by apiViewModel.token.collectAsState()
     NavHost(
         navController = navController,
-        startDestination = Route.Main.route
+        startDestination = if(token.isNotBlank()) Route.Main.route else Route.Login.route
     ){
         composable(Route.Main.route){
             MainScreen(padding, navController,apiViewModel)
@@ -59,6 +64,12 @@ fun Navigation(
             val userId = it.arguments?.getLong("userId") ?: -1
             ProfileScreen(userId,navController,padding,apiViewModel)
         }
+        composable(Route.Login.route){
+            LoginScreen()
+        }
+        composable(Route.Register.route){
+            RegisterScreen()
+        }
     }
 }
 
@@ -66,4 +77,6 @@ sealed class Route(val route: String){
     object Main: Route("main")
     object Chat: Route("chat/{friendId}"){ fun createRoute(friendId: Long) = "chat/$friendId" }
     object Profile: Route("profile/{userId}"){ fun createRoute(userId: Long) = "profile/$userId" }
+    object Login: Route("login")
+    object Register: Route("register")
 }
