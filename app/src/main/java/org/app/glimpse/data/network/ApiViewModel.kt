@@ -4,13 +4,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.app.glimpse.Route
 import org.app.glimpse.data.repository.ApiRepository
-import org.app.glimpse.data.repository.JWTRepository
+import org.app.glimpse.data.repository.UserRepository
 import java.util.Locale
 
 sealed interface ApiState {
@@ -22,7 +24,7 @@ sealed interface ApiState {
 
 class ApiViewModel(
     val apiRepository: ApiRepository,
-    val jwtRepository: JWTRepository
+    val userRepository: UserRepository
 ): ViewModel() {
 
     private val _geocoderState = MutableStateFlow<ApiState>(ApiState.Loading)
@@ -44,12 +46,44 @@ class ApiViewModel(
     private val _userData = MutableStateFlow<ApiState>(ApiState.Initial)
     val userData = _userData.asStateFlow()
 
-    val token = jwtRepository.token
+    val token = userRepository.token
         .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
             ""
         )
+
+    val startRoute = userRepository.startRoute
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            Route.Login.route
+        ).value
+
+    fun signIn(
+        userName: String,
+        password: String
+    ){
+        _userData.value = ApiState.Loading
+        viewModelScope.launch {
+            try {
+                val toka = apiRepository.signIn(userName,password)
+                userRepository.setToken(toka.substring(1,toka.length-1))
+            } catch (e: Exception) {
+                Log.e("TOKEN", e.localizedMessage)
+            }
+            while(token.value.isBlank()){
+                delay(100)
+            }
+            try {
+                _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
+                userRepository.setStartRoute(Route.Main.route)
+            } catch(e: Exception) {
+                _userData.value = ApiState.Error
+                Log.e("Network", "${e.localizedMessage} ${token.value}")
+            }
+        }
+    }
 
     fun getOwnData(){
         _userData.value = ApiState.Loading
@@ -67,7 +101,7 @@ class ApiViewModel(
 
 class ApiViewModelFactory(
     val apiRepository: ApiRepository,
-    val jwtRepository: JWTRepository
+    val jwtRepository: UserRepository
 ): ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if(modelClass.isAssignableFrom(ApiViewModel::class.java)) {

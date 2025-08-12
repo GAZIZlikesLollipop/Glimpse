@@ -70,8 +70,10 @@ dependencies {
     // Kotlinx Serialization (для преобразования JSON)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.datetime) // Актуальная версия kotlinx-datetime
+    implementation(libs.ktor.client.websockets)
     // Опционально: Логирование (очень полезно для отладки сетевых запросов)
     implementation("io.ktor:ktor-client-logging:3.2.3")
     implementation(libs.compose.shimmer)
     implementation(libs.androidx.datastore.preferences)
+
 }

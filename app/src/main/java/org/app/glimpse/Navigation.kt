@@ -6,8 +6,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -20,6 +18,7 @@ import org.app.glimpse.pressentation.screen.LoginScreen
 import org.app.glimpse.pressentation.screen.MainScreen
 import org.app.glimpse.pressentation.screen.ProfileScreen
 import org.app.glimpse.pressentation.screen.RegisterScreen
+import org.app.glimpse.pressentation.screen.TermsConditionsScreen
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -29,11 +28,12 @@ fun Navigation(
     navController: NavHostController,
     padding: PaddingValues
 ){
+
     val apiViewModel = viewModel<ApiViewModel>()
-    val token by apiViewModel.token.collectAsState()
+
     NavHost(
         navController = navController,
-        startDestination = if(token.isNotBlank()) Route.Main.route else Route.Login.route
+        startDestination = apiViewModel.startRoute
     ){
         composable(Route.Main.route){
             MainScreen(padding, navController,apiViewModel)
@@ -65,10 +65,13 @@ fun Navigation(
             ProfileScreen(userId,navController,padding,apiViewModel)
         }
         composable(Route.Login.route){
-            LoginScreen()
+            LoginScreen(navController,apiViewModel)
         }
         composable(Route.Register.route){
             RegisterScreen()
+        }
+        composable(Route.TermsConditions.route){
+            TermsConditionsScreen()
         }
     }
 }
@@ -79,4 +82,5 @@ sealed class Route(val route: String){
     object Profile: Route("profile/{userId}"){ fun createRoute(userId: Long) = "profile/$userId" }
     object Login: Route("login")
     object Register: Route("register")
+    object TermsConditions: Route("termsConditions")
 }

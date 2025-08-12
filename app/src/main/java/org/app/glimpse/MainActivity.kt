@@ -16,11 +16,11 @@ import org.app.glimpse.data.network.ApiService
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.ApiViewModelFactory
 import org.app.glimpse.data.repository.ApiRepository
-import org.app.glimpse.data.repository.JWTRepository
+import org.app.glimpse.data.repository.UserRepository
 import org.app.glimpse.pressentation.theme.GlimpseTheme
 
-val Context.jwtPreferences by preferencesDataStore(
-    "jwtPreferences"
+val Context.userPreferences by preferencesDataStore(
+    "userPreferences"
 )
 class MainActivity : ComponentActivity() {
     lateinit var apiViewModel: ApiViewModel
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val apiRepository = ApiRepository(ApiService.httpClient)
-            val jwtRepository = JWTRepository(this)
+            val jwtRepository = UserRepository(this)
             apiViewModel = viewModels<ApiViewModel>{
                 ApiViewModelFactory(apiRepository,jwtRepository)
             }.value

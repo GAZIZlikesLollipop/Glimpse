@@ -25,4 +25,21 @@
     <string-array name="settings">
         <item>language</item>
     </string-array>
+    <string-array name="login_cnt">
+        <item>Login</item>
+        <item>Sign in</item>
+        <item>Create an account</item>
+        <item>User name</item>
+        <item>Password</item>
+        <item>Login or password is invalid!</item>
+    </string-array>
+    <string-array name="signUp_cnt">
+        <item>Register</item>
+        <item>Sign up</item>
+        <item>Already have account? Login</item>
+        <item>User name</item>
+        <item>Password</item>
+        <item>About you</item>
+        <item>Avatar</item>
+    </string-array>
 </resources>

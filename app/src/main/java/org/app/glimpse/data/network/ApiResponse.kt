@@ -51,7 +51,7 @@ data class FriendData(
     val bio: String,
     val longitude: Double,
     val latitude: Double,
-    val friends: List<FriendData>,
+    val friends: List<FriendData>? = null,
     @SerialName("created_at") @Serializable(InstantSerialize::class) val createdAt: Instant = Clock.System.now(),
     @SerialName("updated_at") @Serializable(InstantSerialize::class) val updatedAt: Instant = Clock.System.now()
 )
@@ -65,7 +65,7 @@ data class FriendUser(
     val latitude: Double,
     val longitude: Double,
     @Serializable(InstantSerialize::class) val lastOnline: Instant,
-    val friends: List<FriendData>,
+    val friends: List<FriendData>? = null,
     @SerialName("created_at") @Serializable(InstantSerialize::class) val createdAt: Instant = Clock.System.now(),
     @SerialName("updated_at") @Serializable(InstantSerialize::class) val updatedAt: Instant = Clock.System.now()
 )

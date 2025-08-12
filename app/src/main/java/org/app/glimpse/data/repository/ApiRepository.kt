@@ -2,18 +2,28 @@ package org.app.glimpse.data.repository
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
+import io.ktor.websocket.send
+import kotlinx.coroutines.delay
+import kotlinx.serialization.json.Json
 import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.GeocoderResponse
 import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.User
 import java.util.Locale
+import java.util.Scanner
 
 interface ApiRepo {
     suspend fun getLocation(
@@ -25,9 +35,11 @@ interface ApiRepo {
     suspend fun getUserData(token: String): User
     suspend fun signIn(login: String, password: String): String
     suspend fun signUp(data: SignUpUser)
+    suspend fun startWebSocket(token: String, onReceived: (User) -> Unit, isSend: Boolean)
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
+    val host = "10.0.2.2"
     override suspend fun getLocation(
         longitude: Double,
         latitude: Double,
@@ -38,14 +50,14 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     override suspend fun getUserData(token: String): User {
-        return httpClient.get("https://192.168.13.49:8080/api/users"){
+        return httpClient.get("https://$host:8080/api/users"){
             header("Authorization", "Bearer $token")
         }.body<User>()
     }
 
     override suspend fun signUp(data: SignUpUser) {
         httpClient.submitFormWithBinaryData(
-            url = "https://192.168.13.49:8080/signUp",
+            url = "https://$host:8080/signUp",
             formData = formData {
                 append("name",data.userName)
                 append("password",data.password)
@@ -64,6 +76,44 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         login: String,
         password: String
     ): String {
-        return httpClient.post("https://192.168.13.49:8080/signIn") { AuthRequest(login,password) }.body<String>()
+        return httpClient.post("https://$host:8080/signIn") {
+            contentType(ContentType.Application.Json)
+            setBody(AuthRequest(login,password))
+        }.body<String>()
+    }
+
+    override suspend fun startWebSocket(
+        token: String,
+        onReceived: (User) -> Unit,
+        isSend: Boolean
+    ) {
+        httpClient.webSocket(
+            port = 8080,
+            path = "/api/ws",
+            host =  host,
+            request = {
+                header("Authorization",token)
+            }
+        ) {
+            while(true){
+                if(isSend){
+                    send(Scanner(System.`in`).next())
+                    for(frame in incoming) {
+                        when(frame) {
+                            is Frame.Text -> {
+                                onReceived(Json.decodeFromString(frame.readText()))
+                            }
+                            is Frame.Close -> {
+                                return@webSocket
+                            }
+                            else -> {}
+                        }
+                    }
+                } else {
+                    delay(100)
+                }
+            }
+        }
+
     }
 }
