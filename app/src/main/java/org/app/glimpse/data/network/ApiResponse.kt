@@ -2,6 +2,7 @@
 
 package org.app.glimpse.data.network
 
+import android.graphics.Bitmap
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,7 +11,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.io.File
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -82,9 +82,8 @@ data class SignUpUser(
     val userName: String,
     val password: String,
     val bio: String,
-    val avatar: File,
-    val latitude: Double,
-    val longitude: Double
+    val avatar: Bitmap?,
+    val avatarExt: String
 )
 
 @Serializable

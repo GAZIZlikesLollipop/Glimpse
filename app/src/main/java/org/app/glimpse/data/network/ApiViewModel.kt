@@ -1,5 +1,6 @@
 package org.app.glimpse.data.network
 
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -58,7 +59,7 @@ class ApiViewModel(
             viewModelScope,
             SharingStarted.Eagerly,
             Route.Login.route
-        ).value
+        )
 
     fun signIn(
         userName: String,
@@ -70,6 +71,7 @@ class ApiViewModel(
                 val toka = apiRepository.signIn(userName,password)
                 userRepository.setToken(toka.substring(1,toka.length-1))
             } catch (e: Exception) {
+                _userData.value = ApiState.Error
                 Log.e("TOKEN", e.localizedMessage)
             }
             while(token.value.isBlank()){
@@ -80,7 +82,50 @@ class ApiViewModel(
                 userRepository.setStartRoute(Route.Main.route)
             } catch(e: Exception) {
                 _userData.value = ApiState.Error
-                Log.e("Network", "${e.localizedMessage} ${token.value}")
+                Log.e("USERDATA", e.localizedMessage)
+            }
+        }
+    }
+
+    fun signUp(
+        userName: String,
+        password: String,
+        about: String? = null,
+        avatar: Bitmap? = null,
+        avatarExt: String
+    ){
+        _userData.value = ApiState.Loading
+        viewModelScope.launch {
+            try {
+                apiRepository.signUp(
+                    SignUpUser(
+                        userName = userName,
+                        password = password,
+                        bio = about ?: "",
+                        avatar = avatar,
+                        avatarExt = avatarExt
+                    )
+                )
+            } catch (e: Exception) {
+                _userData.value = ApiState.Error
+                Log.e("SIGNUP", e.localizedMessage)
+            }
+            try {
+                val toka = apiRepository.signIn(userName,password)
+                userRepository.setToken(toka.substring(1,toka.length-1))
+            } catch (e: Exception) {
+                _userData.value = ApiState.Error
+                Log.e("TOKEN", e.localizedMessage)
+            }
+            while(token.value.isBlank()){
+                delay(100)
+            }
+            try {
+                _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
+                userRepository.setStartRoute(Route.Main.route)
+            } catch(e: Exception) {
+                _userData.value = ApiState.Error
+                Log.e("USERDATA", e.localizedMessage)
             }
         }
     }

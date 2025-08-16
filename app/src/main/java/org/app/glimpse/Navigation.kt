@@ -6,6 +6,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -30,10 +32,11 @@ fun Navigation(
 ){
 
     val apiViewModel = viewModel<ApiViewModel>()
+    val route by apiViewModel.startRoute.collectAsState()
 
     NavHost(
         navController = navController,
-        startDestination = apiViewModel.startRoute
+        startDestination = route
     ){
         composable(Route.Main.route){
             MainScreen(padding, navController,apiViewModel)
@@ -68,7 +71,7 @@ fun Navigation(
             LoginScreen(navController,apiViewModel)
         }
         composable(Route.Register.route){
-            RegisterScreen()
+            RegisterScreen(navController,apiViewModel)
         }
         composable(Route.TermsConditions.route){
             TermsConditionsScreen()

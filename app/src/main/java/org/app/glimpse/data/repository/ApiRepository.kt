@@ -1,5 +1,6 @@
 package org.app.glimpse.data.repository
 
+import android.graphics.Bitmap
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.websocket.webSocket
@@ -22,6 +23,7 @@ import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.GeocoderResponse
 import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.User
+import java.io.ByteArrayOutputStream
 import java.util.Locale
 import java.util.Scanner
 
@@ -56,19 +58,24 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     override suspend fun signUp(data: SignUpUser) {
+        val stream = ByteArrayOutputStream()
+        data.avatar?.compress(Bitmap.CompressFormat.PNG,100,stream)
+        val avatar = stream.toByteArray()
         httpClient.submitFormWithBinaryData(
             url = "https://$host:8080/signUp",
             formData = formData {
                 append("name",data.userName)
                 append("password",data.password)
                 append("bio",data.bio)
-                append("avatar", data.avatar.readBytes(), Headers.build {
-                    append(HttpHeaders.ContentType, "application/octet-stream")
-                    append(HttpHeaders.ContentDisposition, "filename=\"${data.avatar.name}\"")
-                })
-                append("latitude",data.latitude)
-                append("longitude",data.longitude)
-            },
+                if(data.avatar != null) {
+                    append("avatar", avatar, Headers.build {
+                        append(HttpHeaders.ContentType, "application/octet-stream")
+                        append(HttpHeaders.ContentDisposition, "filename=\"${data.userName}.${data.avatarExt}\"")
+                    })
+                }
+                append("latitude",0.0)
+                append("longitude",0.0)
+            }
         )
     }
 

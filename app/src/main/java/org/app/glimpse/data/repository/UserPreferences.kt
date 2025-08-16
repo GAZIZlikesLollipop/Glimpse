@@ -33,7 +33,7 @@ class UserRepository(context: Context): UserPreferences {
 
     override suspend fun setStartRoute(route: String) {
         dataStore.edit {
-            it[stringPreferencesKey("token")] = route
+            it[stringPreferencesKey("start_route")] = route
         }
     }
 }

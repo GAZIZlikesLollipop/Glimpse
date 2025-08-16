@@ -24,6 +24,8 @@
 
     <string-array name="settings">
         <item>language</item>
+        <item>log out</item>
+        <item>delete account</item>
     </string-array>
     <string-array name="login_cnt">
         <item>Login</item>
@@ -36,10 +38,13 @@
     <string-array name="signUp_cnt">
         <item>Register</item>
         <item>Sign up</item>
-        <item>Already have account? Login</item>
+        <item>Already have account?</item>
         <item>User name</item>
         <item>Password</item>
         <item>About you</item>
         <item>Avatar</item>
+        <item>Some data is invalid!</item>
+        <item>Delete</item>
+        <item>Edit</item>
     </string-array>
 </resources>
