@@ -3,10 +3,15 @@ package org.app.glimpse.data.repository
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.app.glimpse.Route
-import org.app.glimpse.userPreferences
+
+
+val Context.userPreferences by preferencesDataStore(
+    "userPreferences"
+)
 
 interface UserPreferences {
     val token: Flow<String>
@@ -15,7 +20,7 @@ interface UserPreferences {
     suspend fun setStartRoute(route: String)
 }
 
-class UserRepository(context: Context): UserPreferences {
+class UserPreferencesRepository(context: Context): UserPreferences {
     val dataStore = context.userPreferences
     override val token: Flow<String> = dataStore.data.map {
         it[stringPreferencesKey("token")] ?: ""

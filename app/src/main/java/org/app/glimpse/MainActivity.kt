@@ -1,6 +1,5 @@
 package org.app.glimpse
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,19 +8,16 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.navigation.compose.rememberNavController
 import com.yandex.mapkit.MapKitFactory
 import org.app.glimpse.data.network.ApiService
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.ApiViewModelFactory
 import org.app.glimpse.data.repository.ApiRepository
-import org.app.glimpse.data.repository.UserRepository
+import org.app.glimpse.data.repository.UserDataRepository
+import org.app.glimpse.data.repository.UserPreferencesRepository
 import org.app.glimpse.pressentation.theme.GlimpseTheme
 
-val Context.userPreferences by preferencesDataStore(
-    "userPreferences"
-)
 class MainActivity : ComponentActivity() {
     lateinit var apiViewModel: ApiViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,9 +25,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val apiRepository = ApiRepository(ApiService.httpClient)
-            val jwtRepository = UserRepository(this)
+            val userPreferencesRepository = UserPreferencesRepository(this)
+            val userDataRepository = UserDataRepository(this)
             apiViewModel = viewModels<ApiViewModel>{
-                ApiViewModelFactory(apiRepository,jwtRepository)
+                ApiViewModelFactory(apiRepository,userPreferencesRepository,userDataRepository)
             }.value
             val navController = rememberNavController()
             GlimpseTheme {

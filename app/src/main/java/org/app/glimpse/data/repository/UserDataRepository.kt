@@ -1,0 +1,110 @@
+package org.app.glimpse.data.repository
+
+import android.content.Context
+import androidx.datastore.dataStore
+import kotlinx.coroutines.flow.Flow
+import org.app.glimpse.FriendData
+import org.app.glimpse.FriendUser
+import org.app.glimpse.Message
+import org.app.glimpse.UserData
+import org.app.glimpse.data.UserDataSerializer
+import org.app.glimpse.data.network.User
+import kotlin.time.ExperimentalTime
+
+val Context.userData by dataStore(
+    "userData.proto",
+    UserDataSerializer
+)
+
+interface UserDataRepo {
+    val userData: Flow<UserData>
+    suspend fun setUserData(data: User)
+}
+
+class UserDataRepository(context: Context): UserDataRepo {
+    val dataStore = context.userData
+
+    override val userData: Flow<UserData> = dataStore.data
+
+    @OptIn(ExperimentalTime::class)
+    override suspend fun setUserData(data: User) {
+        val friends = mutableListOf<FriendUser>()
+        for(friend in data.friends) {
+            val friendsFriend = mutableListOf<FriendData>()
+            for(friendFriend in friend.friends!!){
+                val data = friendFriend
+                friendsFriend.add(
+                    FriendData.newBuilder()
+                        .setId(data.id)
+                        .setName(data.name)
+                        .setBio(data.bio)
+                        .setAvatar(data.avatar)
+                        .setLatitude(data.latitude)
+                        .setLongitude(data.longitude)
+                        .setCreatedAt(data.createdAt.toEpochMilliseconds())
+                        .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                        .build()
+                )
+            }
+            val data = friend
+            friends.add(
+                FriendUser.newBuilder()
+                    .setId(data.id)
+                    .setName(data.name)
+                    .setBio(data.bio)
+                    .setAvatar(data.avatar)
+                    .setLatitude(data.latitude)
+                    .setLongitude(data.longitude)
+                    .addAllFriends(friendsFriend)
+                    .setCreatedAt(data.createdAt.toEpochMilliseconds())
+                    .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                    .build()
+            )
+        }
+        val receivedMessages = mutableListOf<Message>()
+        for(msg in data.receivedMessages){
+            receivedMessages.add(
+                Message.newBuilder()
+                    .setId(msg.id)
+                    .setContent(msg.content)
+                    .setIsChecked(msg.isChecked)
+                    .setSenderId(msg.senderId ?: 0)
+                    .setReceivedId(msg.receivedId ?: 0)
+                    .setCreatedAt(msg.createdAt.toEpochMilliseconds())
+                    .setUpdatedAt(msg.updatedAt.toEpochMilliseconds())
+                    .build()
+            )
+        }
+        val sentMessages = mutableListOf<Message>()
+        for(msg in data.sentMessages){
+            sentMessages.add(
+                Message.newBuilder()
+                    .setId(msg.id)
+                    .setContent(msg.content)
+                    .setIsChecked(msg.isChecked)
+                    .setSenderId(msg.senderId ?: 0)
+                    .setReceivedId(msg.receivedId ?: 0)
+                    .setCreatedAt(msg.createdAt.toEpochMilliseconds())
+                    .setUpdatedAt(msg.updatedAt.toEpochMilliseconds())
+                    .build()
+            )
+        }
+        dataStore.updateData {
+            UserData.newBuilder()
+                .setId(data.id)
+                .setName(data.name)
+                .setPassword(data.password)
+                .setBio(data.bio)
+                .setAvatar(data.avatar)
+                .setLatitude(data.latitude)
+                .setLongitude(data.longitude)
+                .addAllFriends(friends)
+                .addAllSentMessages(sentMessages)
+                .addAllReceivedMessages(receivedMessages)
+                .setCreatedAt(data.createdAt.toEpochMilliseconds())
+                .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                .build()
+        }
+    }
+
+}

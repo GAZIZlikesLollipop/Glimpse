@@ -41,7 +41,8 @@ interface ApiRepo {
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
-    val host = "10.0.2.2"
+//    val host = "10.0.2.2"
+    val host = "192.168.1.12"
     override suspend fun getLocation(
         longitude: Double,
         latitude: Double,

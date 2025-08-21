@@ -35,7 +35,6 @@ data class User(
     val avatar: String,
     val latitude: Double,
     val longitude: Double,
-    @Serializable(InstantSerialize::class) val lastOnline: Instant,
     val friends: List<FriendUser>,
     val sentMessages: List<Message>,
     val receivedMessages: List<Message>,
