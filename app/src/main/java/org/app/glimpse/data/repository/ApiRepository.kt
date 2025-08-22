@@ -74,8 +74,8 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
                         append(HttpHeaders.ContentDisposition, "filename=\"${data.userName}.${data.avatarExt}\"")
                     })
                 }
-                append("latitude",0.0)
-                append("longitude",0.0)
+                append("latitude",data.latitude)
+                append("longitude",data.longitude)
             }
         )
     }

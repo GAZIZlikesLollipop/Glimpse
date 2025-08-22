@@ -2,6 +2,10 @@
 
 package org.app.glimpse.pressentation.screen
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
@@ -56,6 +60,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.valentinilk.shimmer.shimmer
 import com.yandex.mapkit.Animation
@@ -91,6 +96,25 @@ fun MainScreen(
     LaunchedEffect(isDarkTheme) {
         if(apiState is ApiState.Initial) { apiViewModel.getOwnData() }
         mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
+    }
+
+    val locationRequest = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {}
+
+    val hasFinePerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    var hasFinePermission by remember { mutableStateOf(hasFinePerm) }
+
+    val hasBackPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+    var hasBackPermission by remember { mutableStateOf(hasBackPerm) }
+
+    LaunchedEffect(Unit) {
+        if(!hasFinePermission){
+            locationRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if(!hasBackPermission) {
+            locationRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
     }
 
     Box(

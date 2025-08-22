@@ -82,7 +82,9 @@ data class SignUpUser(
     val password: String,
     val bio: String,
     val avatar: Bitmap?,
-    val avatarExt: String
+    val avatarExt: String,
+    val latitude: Double,
+    val longitude: Double
 )
 
 @Serializable

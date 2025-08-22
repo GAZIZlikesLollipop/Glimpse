@@ -107,7 +107,9 @@ class ApiViewModel(
         password: String,
         about: String? = null,
         avatar: Bitmap? = null,
-        avatarExt: String
+        avatarExt: String,
+        latitude: Double,
+        longitude: Double
     ){
         _userData.value = ApiState.Loading
         viewModelScope.launch {
@@ -118,7 +120,9 @@ class ApiViewModel(
                         password = password,
                         bio = about ?: "",
                         avatar = avatar,
-                        avatarExt = avatarExt
+                        avatarExt = avatarExt,
+                        latitude,
+                        longitude
                     )
                 )
             } catch (e: Exception) {
