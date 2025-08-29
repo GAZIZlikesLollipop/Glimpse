@@ -14,6 +14,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.utils.io.InternalAPI
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
@@ -22,6 +23,7 @@ import kotlinx.serialization.json.Json
 import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.GeocoderResponse
 import org.app.glimpse.data.network.SignUpUser
+import org.app.glimpse.data.network.UpdateUser
 import org.app.glimpse.data.network.User
 import java.io.ByteArrayOutputStream
 import java.util.Locale
@@ -38,6 +40,7 @@ interface ApiRepo {
     suspend fun signIn(login: String, password: String): String
     suspend fun signUp(data: SignUpUser)
     suspend fun startWebSocket(token: String, onReceived: (User) -> Unit, isSend: Boolean)
+    suspend fun updateUserData(token: String,data: UpdateUser)
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
@@ -123,5 +126,45 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
             }
         }
 
+    }
+
+    @OptIn(InternalAPI::class)
+    override suspend fun updateUserData(token: String, data: UpdateUser) {
+        httpClient.submitFormWithBinaryData(
+            url = "https://$host:8080/api/user",
+            formData = formData {
+                append("name", data.name)
+                if(data.password != null) {
+                    append("password", data.password)
+                }
+                if(data.bio != null) {
+                    append("bio", data.bio)
+                }
+                if(data.avatar != null) {
+                    val stream = ByteArrayOutputStream()
+                    data.avatar.compress(Bitmap.CompressFormat.PNG,100,stream)
+                    val avatar = stream.toByteArray()
+                    append("avatar", avatar, Headers.build {
+                        append(HttpHeaders.ContentType, "application/octet-stream")
+                        append(HttpHeaders.ContentDisposition, "filename=\"${data.name}.${data.avatarExt}\"")
+                    })
+                }
+                if(data.latitude != null) {
+                    append("latitude", data.latitude)
+                }
+                if(data.longitude != null) {
+                    append("longitude", data.longitude)
+                }
+                if(data.friends != null) {
+                    append("friends",data.friends)
+                }
+                if(data.sentMessages != null) {
+                    append("sentMessages",data.sentMessages)
+                }
+                if(data.receivedMessages != null) {
+                    append("receivedMessages",data.receivedMessages)
+                }
+            }
+        )
     }
 }

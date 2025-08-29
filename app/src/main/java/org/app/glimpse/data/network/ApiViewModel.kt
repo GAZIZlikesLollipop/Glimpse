@@ -66,6 +66,13 @@ class ApiViewModel(
             ""
         )
 
+    val isServiceRun = userPreferencesRepository.isServiceRun
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            false
+        )
+
     val startRoute = userPreferencesRepository.startRoute
         .stateIn(
             viewModelScope,

@@ -10,12 +10,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.yandex.mapkit.MapKitFactory
-import org.app.glimpse.data.network.ApiService
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.ApiViewModelFactory
-import org.app.glimpse.data.repository.ApiRepository
-import org.app.glimpse.data.repository.UserDataRepository
-import org.app.glimpse.data.repository.UserPreferencesRepository
 import org.app.glimpse.pressentation.theme.GlimpseTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,11 +20,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val apiRepository = ApiRepository(ApiService.httpClient)
-            val userPreferencesRepository = UserPreferencesRepository(this)
-            val userDataRepository = UserDataRepository(this)
             apiViewModel = viewModels<ApiViewModel>{
-                ApiViewModelFactory(apiRepository,userPreferencesRepository,userDataRepository)
+                ApiViewModelFactory(
+                    (application as MyApplication).apiRepository,
+                    (application as MyApplication).userPreferencesRepository,
+                    (application as MyApplication).userDataRepository
+                )
             }.value
             val navController = rememberNavController()
             GlimpseTheme {

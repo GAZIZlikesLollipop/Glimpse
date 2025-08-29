@@ -1,9 +1,14 @@
+@file:OptIn(ExperimentalPermissionsApi::class)
+
 package org.app.glimpse.pressentation.screen
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,9 +78,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import org.app.glimpse.R
 import org.app.glimpse.Route
+import org.app.glimpse.data.LocationTrackingService
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 
@@ -91,7 +100,7 @@ fun RegisterScreen(
     var aboutField by rememberSaveable { mutableStateOf("") }
     val apiState by apiViewModel.userData.collectAsState()
     var isShow by rememberSaveable { mutableStateOf(false) }
-    var avatarField by rememberSaveable { mutableStateOf<Bitmap?>(null) }
+    var avatarField by remember { mutableStateOf<Bitmap?>(null) }
     var extField by rememberSaveable { mutableStateOf("") }
     val context = LocalContext.current
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) {
@@ -116,16 +125,15 @@ fun RegisterScreen(
         }
     }
 
-    val locationRequest = rememberLauncherForActivityResult(
+    val permissionRequest = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {}
 
-    val hasFinePerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var hasFinePermission by remember { mutableStateOf(hasFinePerm) }
+    val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val hasBackPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var hasBackPermission by remember { mutableStateOf(hasBackPerm) }
+    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
+    val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -360,14 +368,23 @@ fun RegisterScreen(
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if(!hasFinePermission || !hasBackPermission){
+                    if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
                         if(!hasFinePermission){
-                            locationRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                         }
                         if(!hasBackPermission) {
-                            locationRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        }
+                        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (!hasNotifPermission) {
+                                permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
                         }
                     } else {
+                        val inta = Intent(context,LocationTrackingService::class.java).apply {
+                            action = LocationTrackingService.Actions.START_TRACKING.name
+                        }
+                        ContextCompat.startForegroundService(context,inta)
                         LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
                             apiViewModel.signUp(
                                 loginField,
@@ -483,22 +500,27 @@ fun LoginScreen(
     val apiState by apiViewModel.userData.collectAsState()
     var isShow by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val locationRequest = rememberLauncherForActivityResult(
+    val permissionRequest = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {}
 
-    val hasFinePerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var hasFinePermission by remember { mutableStateOf(hasFinePerm) }
+    val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val hasBackPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var hasBackPermission by remember { mutableStateOf(hasBackPerm) }
+    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
+
+    val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
     LaunchedEffect(Unit) {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!hasNotifPermission) {
+                permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
         if(!hasFinePermission){
-            locationRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
         if(!hasBackPermission) {
-            locationRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
 
@@ -622,16 +644,26 @@ fun LoginScreen(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                if(!hasFinePermission || !hasBackPermission){
+                if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (!hasNotifPermission) {
+                            permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
                     if(!hasFinePermission){
-                        locationRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                     }
                     if(!hasBackPermission) {
-                        locationRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
                 } else {
+                    val inta = Intent(context,LocationTrackingService::class.java).apply {
+                        action = LocationTrackingService.Actions.START_TRACKING.name
+                    }
+                    ContextCompat.startForegroundService(context,inta)
                     apiViewModel.signIn(loginField,passwordField)
                 }
+                Log.d("HELLO","$hasNotifPermission, $hasFinePermission, $hasBackPermission")
             },
             enabled = loginField.isNotBlank() && passwordField.isNotBlank() && apiState !is ApiState.Loading,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)

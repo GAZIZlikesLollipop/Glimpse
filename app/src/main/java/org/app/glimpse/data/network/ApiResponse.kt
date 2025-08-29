@@ -87,6 +87,19 @@ data class SignUpUser(
     val longitude: Double
 )
 
+data class UpdateUser(
+    val name: String,
+    val password: String? = null,
+    val bio: String? = null,
+    val avatar: Bitmap? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val friends: List<FriendUser>? = null,
+    val sentMessages: List<Message>? = null,
+    val receivedMessages: List<Message>? = null,
+    val avatarExt: String? = null
+)
+
 @Serializable
 data class AuthRequest(
     val user_name: String,

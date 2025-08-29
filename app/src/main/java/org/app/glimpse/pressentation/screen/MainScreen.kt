@@ -1,9 +1,10 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 
 package org.app.glimpse.pressentation.screen
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Intent
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -62,6 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.valentinilk.shimmer.shimmer
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.Point
@@ -72,6 +76,7 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import org.app.glimpse.R
 import org.app.glimpse.Route
+import org.app.glimpse.data.LocationTrackingService
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.User
@@ -98,22 +103,38 @@ fun MainScreen(
         mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
     }
 
-    val locationRequest = rememberLauncherForActivityResult(
+    val permissionRequest = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {}
 
-    val hasFinePerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var hasFinePermission by remember { mutableStateOf(hasFinePerm) }
+    val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val hasBackPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-    var hasBackPermission by remember { mutableStateOf(hasBackPerm) }
+    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    LaunchedEffect(Unit) {
-        if(!hasFinePermission){
-            locationRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if(!hasBackPermission) {
-            locationRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+    val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
+
+    val isServiceRun by apiViewModel.isServiceRun.collectAsState()
+
+    LaunchedEffect(isServiceRun) {
+        if(!isServiceRun) {
+            if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
+                if(!hasFinePermission){
+                    permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                if(!hasBackPermission) {
+                    permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (!hasNotifPermission) {
+                        permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+            } else {
+                val inta = Intent(context, LocationTrackingService::class.java).apply {
+                    action = LocationTrackingService.Actions.START_TRACKING.name
+                }
+                ContextCompat.startForegroundService(context, inta)
+            }
         }
     }
 
