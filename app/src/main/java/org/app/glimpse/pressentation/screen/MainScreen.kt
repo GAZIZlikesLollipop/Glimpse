@@ -244,12 +244,8 @@ fun MainScreen(
         }
         Button(
             onClick = {
-                if(apiState is ApiState.Success) {
-                    val userData = (apiState as ApiState.Success).data as User
-                    navController.navigate(Route.Profile.createRoute(userData.id))
-                } else {
-                    navController.navigate(Route.Profile.createRoute(-1))
-                }
+                val userData = (apiState as ApiState.Success).data as User
+                navController.navigate(Route.Profile.createRoute(userData.id))
             },
             shape = CircleShape,
             modifier = Modifier

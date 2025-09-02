@@ -21,6 +21,7 @@ import io.ktor.websocket.send
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import org.app.glimpse.data.network.AuthRequest
+import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.GeocoderResponse
 import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.UpdateUser
@@ -41,11 +42,13 @@ interface ApiRepo {
     suspend fun signUp(data: SignUpUser)
     suspend fun startWebSocket(token: String, onReceived: (User) -> Unit, isSend: Boolean)
     suspend fun updateUserData(token: String,data: UpdateUser)
+    suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
-//    val host = "10.0.2.2"
-    val host = "192.168.1.12"
+    val host = "10.0.2.2"
+//    val host = "192.168.1.12"
+
     override suspend fun getLocation(
         longitude: Double,
         latitude: Double,
@@ -59,6 +62,10 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         return httpClient.get("https://$host:8080/api/users"){
             header("Authorization", "Bearer $token")
         }.body<User>()
+    }
+
+    override suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser> {
+        return httpClient.get("https://$host:8080/friends/$friendFriendId").body<List<FriendUser>>()
     }
 
     override suspend fun signUp(data: SignUpUser) {
@@ -102,9 +109,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
             port = 8080,
             path = "/api/ws",
             host =  host,
-            request = {
-                header("Authorization",token)
-            }
+            request = { header("Authorization",token) }
         ) {
             while(true){
                 if(isSend){

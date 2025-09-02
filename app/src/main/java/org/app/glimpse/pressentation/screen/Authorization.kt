@@ -381,10 +381,6 @@ fun RegisterScreen(
                             }
                         }
                     } else {
-                        val inta = Intent(context,LocationTrackingService::class.java).apply {
-                            action = LocationTrackingService.Actions.START_TRACKING.name
-                        }
-                        ContextCompat.startForegroundService(context,inta)
                         LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
                             apiViewModel.signUp(
                                 loginField,
@@ -396,6 +392,10 @@ fun RegisterScreen(
                                 location.longitude
                             )
                         }
+                        val inta = Intent(context,LocationTrackingService::class.java).apply {
+                            action = LocationTrackingService.Actions.START_TRACKING.name
+                        }
+                        ContextCompat.startForegroundService(context,inta)
                     }
                 },
                 enabled = loginField.isNotBlank() && passwordField.isNotBlank() && aboutField.isNotBlank() && apiState !is ApiState.Loading && avatarField != null,
@@ -657,11 +657,11 @@ fun LoginScreen(
                         permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
                 } else {
+                    apiViewModel.signIn(loginField,passwordField)
                     val inta = Intent(context,LocationTrackingService::class.java).apply {
                         action = LocationTrackingService.Actions.START_TRACKING.name
                     }
                     ContextCompat.startForegroundService(context,inta)
-                    apiViewModel.signIn(loginField,passwordField)
                 }
                 Log.d("HELLO","$hasNotifPermission, $hasFinePermission, $hasBackPermission")
             },

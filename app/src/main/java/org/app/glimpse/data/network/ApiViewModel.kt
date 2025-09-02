@@ -11,12 +11,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.io.IOException
 import org.app.glimpse.Route
 import org.app.glimpse.UserData
 import org.app.glimpse.data.repository.ApiRepository
 import org.app.glimpse.data.repository.UserDataRepository
 import org.app.glimpse.data.repository.UserPreferencesRepository
 import java.util.Locale
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -100,7 +102,7 @@ class ApiViewModel(
             try {
                 val data = apiRepository.getUserData(token.value)
                 _userData.value = ApiState.Success(data)
-                userDataRepository.setUserData(data)
+                userDataRepository.setUserDataNet(data)
                 userPreferencesRepository.setStartRoute(Route.Main.route)
             } catch(e: Exception) {
                 _userData.value = ApiState.Error
@@ -109,6 +111,37 @@ class ApiViewModel(
         }
     }
 
+    @OptIn(ExperimentalTime::class)
+    fun getFriendFriends(id: Long){
+        viewModelScope.launch {
+            try {
+                val user = you.value
+                val friendFriends = mutableListOf<org.app.glimpse.FriendData>()
+                apiRepository.getFriendFriends(id).forEach { data ->
+                    friendFriends.add(
+                        org.app.glimpse.FriendData.newBuilder()
+                            .setId(data.id)
+                            .setName(data.name)
+                            .setBio(data.bio)
+                            .setAvatar(data.avatar)
+                            .setLatitude(data.latitude)
+                            .setLongitude(data.longitude)
+                            .setCreatedAt(data.createdAt.toEpochMilliseconds())
+                            .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                            .build()
+                    )
+                }
+                val friends = you.value.friendsList
+                    .find { it.id == id } !!.toBuilder()
+                    .addAllFriends(friendFriends)
+                    .build()
+                user.toBuilder().addFriends(friends).build()
+                userDataRepository.setUserData(user)
+            } catch(e: Exception) {
+                Log.d("HEllo",e.localizedMessage ?: "")
+            }
+        }
+    }
     fun signUp(
         userName: String,
         password: String,
@@ -149,7 +182,7 @@ class ApiViewModel(
             try {
                 val data = apiRepository.getUserData(token.value)
                 _userData.value = ApiState.Success(data)
-                userDataRepository.setUserData(data)
+                userDataRepository.setUserDataNet(data)
                 userPreferencesRepository.setStartRoute(Route.Main.route)
             } catch(e: Exception) {
                 _userData.value = ApiState.Error
@@ -159,92 +192,104 @@ class ApiViewModel(
     }
 
     @OptIn(ExperimentalTime::class)
+    private fun setUserData() {
+        val data = you.value
+        val friends = mutableListOf<FriendUser>()
+        for(friend in data.friendsList){
+            val friendsFriend = mutableListOf<FriendUser>()
+            for(friendFriends in friend.friendsList){
+                friendsFriend.add(
+                    FriendUser(
+                        id = friendFriends.id,
+                        name = friendFriends.name,
+                        avatar = friendFriends.avatar,
+                        bio = friendFriends.bio,
+                        latitude = friendFriends.latitude,
+                        longitude = friendFriends.longitude,
+                        friends = null,
+                        createdAt = Instant.fromEpochMilliseconds(friendFriends.createdAt),
+                        updatedAt = Instant.fromEpochMilliseconds(friendFriends.updatedAt)
+                    )
+                )
+            }
+            friends.add(
+                FriendUser(
+                    id = friend.id,
+                    name = friend.name,
+                    avatar = friend.avatar,
+                    bio = friend.bio,
+                    latitude = friend.latitude,
+                    longitude = friend.longitude,
+                    lastOnline = Instant.fromEpochMilliseconds(friend.lastOnline),
+                    friends = friendsFriend,
+                    createdAt = Instant.fromEpochMilliseconds(friend.createdAt),
+                    updatedAt = Instant.fromEpochMilliseconds(friend.updatedAt)
+                )
+            )
+        }
+        val sentMessages = mutableListOf<Message>()
+        for(msg in data.sentMessagesList){
+            sentMessages.add(
+                Message(
+                    id = msg.id,
+                    content = msg.content,
+                    isChecked = msg.isChecked,
+                    senderId = msg.senderId,
+                    receivedId = msg.receivedId,
+                    createdAt = Instant.fromEpochMilliseconds(msg.createdAt),
+                    updatedAt = Instant.fromEpochMilliseconds(msg.updatedAt)
+                )
+            )
+        }
+        val receivedMessages = mutableListOf<Message>()
+        for(msg in data.receivedMessagesList){
+            receivedMessages.add(
+                Message(
+                    id = msg.id,
+                    content = msg.content,
+                    isChecked = msg.isChecked,
+                    senderId = msg.senderId,
+                    receivedId = msg.receivedId,
+                    createdAt = Instant.fromEpochMilliseconds(msg.createdAt),
+                    updatedAt = Instant.fromEpochMilliseconds(msg.updatedAt)
+                )
+            )
+        }
+        _userData.value = ApiState.Success(
+            User(
+                id = data.id,
+                name = data.name,
+                password = data.password,
+                bio = data.bio,
+                avatar = data.avatar,
+                latitude = data.latitude,
+                longitude = data.longitude,
+                friends = friends,
+                sentMessages = sentMessages,
+                receivedMessages = receivedMessages,
+                createdAt = Instant.fromEpochMilliseconds(data.createdAt),
+                updatedAt = Instant.fromEpochMilliseconds(data.updatedAt)
+            )
+        )
+
+    }
+
+    @OptIn(ExperimentalTime::class)
     fun getOwnData(){
         _userData.value = ApiState.Loading
         viewModelScope.launch {
              try {
-                 val data = you.value
-                 val friends = mutableListOf<FriendUser>()
-                 for(friend in data.friendsList){
-                     val friendsFriend = mutableListOf<FriendData>()
-                     for(friendFriends in friend.friendsList){
-                         friendsFriend.add(
-                             FriendData(
-                                 id = friendFriends.id,
-                                 name = friendFriends.name,
-                                 avatar = friendFriends.avatar,
-                                 bio = friendFriends.bio,
-                                 latitude = friendFriends.latitude,
-                                 longitude = friendFriends.longitude,
-                                 friends = null,
-                                 createdAt = Instant.fromEpochMilliseconds(friendFriends.createdAt),
-                                 updatedAt = Instant.fromEpochMilliseconds(friendFriends.updatedAt)
-                             )
-                         )
-                     }
-                     friends.add(
-                         FriendUser(
-                             id = friend.id,
-                             name = friend.name,
-                             avatar = friend.avatar,
-                             bio = friend.bio,
-                             latitude = friend.latitude,
-                             longitude = friend.longitude,
-                             lastOnline = Instant.fromEpochMilliseconds(friend.lastOnline),
-                             friends = friendsFriend,
-                             createdAt = Instant.fromEpochMilliseconds(friend.createdAt),
-                             updatedAt = Instant.fromEpochMilliseconds(friend.updatedAt)
-                         )
-                     )
+                 userDataRepository.setUserDataNet(apiRepository.getUserData(token.value))
+                 setUserData()
+             } catch (e: Throwable) {
+                 if (e is CancellationException) throw e
+                 if (e is IOException || e.cause is IOException) {
+                     setUserData()
+                 } else {
+                     _userData.value = ApiState.Error
+                     Log.e("Network",e.localizedMessage ?: "")
                  }
-                 val sentMessages = mutableListOf<Message>()
-                 for(msg in data.sentMessagesList){
-                     sentMessages.add(
-                         Message(
-                             id = msg.id,
-                             content = msg.content,
-                             isChecked = msg.isChecked,
-                             senderId = msg.senderId,
-                             receivedId = msg.receivedId,
-                             createdAt = Instant.fromEpochMilliseconds(msg.createdAt),
-                             updatedAt = Instant.fromEpochMilliseconds(msg.updatedAt)
-                         )
-                     )
-                 }
-                 val receivedMessages = mutableListOf<Message>()
-                 for(msg in data.receivedMessagesList){
-                     receivedMessages.add(
-                         Message(
-                             id = msg.id,
-                             content = msg.content,
-                             isChecked = msg.isChecked,
-                             senderId = msg.senderId,
-                             receivedId = msg.receivedId,
-                             createdAt = Instant.fromEpochMilliseconds(msg.createdAt),
-                             updatedAt = Instant.fromEpochMilliseconds(msg.updatedAt)
-                         )
-                     )
-                 }
-                _userData.value = ApiState.Success(
-                    User(
-                        id = data.id,
-                        name = data.name,
-                        password = data.password,
-                        bio = data.bio,
-                        avatar = data.avatar,
-                        latitude = data.latitude,
-                        longitude = data.longitude,
-                        friends = friends,
-                        sentMessages = sentMessages,
-                        receivedMessages = receivedMessages,
-                        createdAt = Instant.fromEpochMilliseconds(data.createdAt),
-                        updatedAt = Instant.fromEpochMilliseconds(data.updatedAt)
-                    )
-                )
-            } catch (e: Exception){
-                 _userData.value = ApiState.Error
-                Log.e("Network",e.localizedMessage ?: "")
-            }
+             }
         }
     }
 

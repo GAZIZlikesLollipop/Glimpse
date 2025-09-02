@@ -66,8 +66,8 @@ class LocationTrackingService: Service() {
     }
 
     enum class Actions {
-        STOP_TRACKING,
-        START_TRACKING
+        START_TRACKING,
+        STOP_TRACKING
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when(intent?.action){

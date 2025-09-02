@@ -5,6 +5,10 @@ import android.location.Geocoder
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,11 +25,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.valentinilk.shimmer.shimmer
@@ -61,16 +69,18 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import org.app.glimpse.R
+import org.app.glimpse.Route
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
+import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.SettingsCard
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.time.ExperimentalTime
 
-@ExperimentalTime
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@ExperimentalTime
 @Composable
 fun ProfileScreen(
     userId: Long,
@@ -80,23 +90,46 @@ fun ProfileScreen(
 ){
     val apiState by apiViewModel.userData.collectAsState()
     val windowInfo = LocalWindowInfo.current
-    if(userId > -1) {
+    if(apiState is ApiState.Success) {
+        var isUser by rememberSaveable { mutableStateOf(false) }
         val settings = stringArrayResource(R.array.settings)
         var isEdit by rememberSaveable { mutableStateOf(false) }
-        val userData = (apiState as ApiState.Success).data as User
+        val data = (apiState as ApiState.Success).data as User
+        var isFriends by rememberSaveable { mutableStateOf(false) }
+        val userData: FriendUser = when {
+            userId == data.id -> {
+                isUser = true
+                FriendUser(
+                    id = data.id,
+                    name = data.name,
+                    avatar = data.avatar,
+                    bio = data.bio,
+                    latitude = data.latitude,
+                    longitude = data.longitude,
+                    friends = data.friends,
+                    createdAt = data.createdAt,
+                    updatedAt = data.updatedAt
+                )
+            }
+
+            else -> {
+                data.friends.find { it.id == userId } ?:
+                data.friends.find { ff -> ff.friends!!.find { it.id == userId } != null }!!
+            }
+        }
+
         val geocodeState by apiViewModel.geocoderState.collectAsState()
         val cnt = stringArrayResource(R.array.profile_cnt)
         val context = LocalContext.current
         val geocoder = Geocoder(context, Locale.getDefault())
         val friendsLocations = remember {
-            mutableStateListOf(
-                *Array(userData.friends.size) { "" }.toList().toTypedArray())
+            mutableStateListOf(*Array(userData.friends?.size ?: 0) { "" }.toList().toTypedArray())
         }
 
         LaunchedEffect(Unit) {
             if (userId == userData.id) {
                 apiViewModel.getLocation(userData.longitude, userData.latitude)
-                userData.friends.forEachIndexed { i, addr ->
+                userData.friends?.forEachIndexed { i, addr ->
                     geocoder.getFromLocation(
                         addr.latitude, addr.longitude, 1,
                         object : Geocoder.GeocodeListener {
@@ -112,7 +145,7 @@ fun ProfileScreen(
                         })
                 }
             } else {
-                val friend = userData.friends.find { it.id == userId }
+                val friend = userData.friends?.find { it.id == userId }
                 apiViewModel.getLocation(friend?.longitude ?: 0.0, friend?.latitude ?: 0.0)
                 friend?.friends?.forEachIndexed { i, it ->
                     geocoder.getFromLocation(
@@ -133,188 +166,269 @@ fun ProfileScreen(
             }
         }
 
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(top = paddingValues.calculateTopPadding()).padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Button(
-                    onClick = { navController.popBackStack() },
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                        MaterialTheme.colorScheme.onBackground
-                    ),
-                    modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = paddingValues.calculateTopPadding())
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back"
-                    )
-                }
-                Button(
-                    onClick = { isEdit = true },
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                        MaterialTheme.colorScheme.onBackground
-                    ),
-                    modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Edit,
-                        contentDescription = "Back"
-                    )
-                }
-            }
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Button(
+                        onClick = { navController.popBackStack() },
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.colorScheme.onBackground
+                        ),
+                        modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                    if (isUser) {
+                        Button(
+                            onClick = { isEdit = true },
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                MaterialTheme.colorScheme.onBackground
+                            ),
+                            modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
                         ) {
-                            AsyncImage(
-                                model = userData.avatar,
-                                contentDescription = null,
-                                contentScale = ContentScale.FillBounds,
-                                modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
-                                    .clip(RoundedCornerShape(20.dp)),
+                            Icon(
+                                imageVector = Icons.Rounded.Edit,
+                                contentDescription = "Back"
                             )
-                            if (userData.createdAt != userData.updatedAt) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End,
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                                        .offset(y = 8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Edit,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground.copy(0.8f),
-                                        modifier = Modifier.size(20.dp)
+                        }
+                    }
+                }
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            ) {
+                                AsyncImage(
+                                    model = userData.avatar,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.FillBounds,
+                                    modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
+                                        .clip(RoundedCornerShape(20.dp)),
+                                )
+                                if (userData.createdAt != userData.updatedAt) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.End,
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(horizontal = 16.dp)
+                                            .offset(y = 8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Edit,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onBackground.copy(0.8f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text = userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
+                                                .toJavaLocalDateTime().format(
+                                                    DateTimeFormatter.ofPattern(
+                                                        "yyyy.MM.dd",
+                                                        Locale.getDefault()
+                                                    )
+                                                ),
+                                            fontWeight = FontWeight.W500,
+                                            fontSize = 16.sp,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(0.8f)
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                text = userData.name,
+                                fontWeight = FontWeight.W600,
+                                fontSize = 42.sp
+                            )
+                            Text(
+                                text = userData.bio,
+                                fontWeight = FontWeight.W700,
+                                fontSize = 30.sp
+                            )
+                            Text(
+                                text = "${cnt[1]} ${
+                                    userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
+                                        .toJavaLocalDateTime().format(
+                                        DateTimeFormatter.ofPattern(
+                                            "yyyy dd MMMM",
+                                            Locale.getDefault()
+                                        )
                                     )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        text = userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime().format(
-                                            DateTimeFormatter.ofPattern(
-                                                "yyyy.MM.dd",
-                                                Locale.getDefault()
+                                }",
+                                fontWeight = FontWeight.W600,
+                                fontSize = 24.sp,
+                                color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
+                            )
+                            if (geocodeState is ApiState.Success) {
+                                Text(
+                                    (geocodeState as ApiState.Success).data.toString(),
+                                    color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
+                                    fontWeight = FontWeight.W600,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                            if (geocodeState is ApiState.Loading || geocodeState is ApiState.Error) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
+                        Text(
+                            cnt[2],
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
+                            modifier = Modifier.padding(16.dp),
+                            fontWeight = FontWeight.W500
+                        )
+                    }
+                    item {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable { isFriends = !isFriends },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${cnt[0]}: ${userData.friends?.size}",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
+                                    modifier = Modifier.padding(16.dp),
+                                    fontWeight = FontWeight.W500
+                                )
+                                Icon(
+                                    imageVector = if (isFriends) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowUp,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                    if (userData.friends != null) {
+                        item {
+                            AnimatedVisibility(
+                                visible = isFriends,
+                                enter = slideInVertically(tween(300,50),{-it}),
+                                exit = slideOutVertically(tween(300,50),{-it}),
+//                                modifier = Modifier.zIndex(0f)
+                            ) {
+                                userData.friends.forEachIndexed { i, f ->
+                                    Row(
+                                        modifier = Modifier.zIndex(0f).fillMaxWidth().clickable {
+                                            if (f.friends == null) {
+                                                apiViewModel.getFriendFriends(f.id)
+                                                navController.navigate(Route.Profile.createRoute(f.id))
+                                            } else {
+                                                navController.navigate(Route.Profile.createRoute(f.id))
+                                            }
+                                        },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Box(Modifier.weight(1f).padding(12.dp)) {
+                                            AsyncImage(
+                                                model = f.avatar,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.FillBounds,
+                                                modifier = Modifier
+                                                    .size((windowInfo.containerSize.width / 16).dp)
+                                                    .clip(RoundedCornerShape(16.dp))
                                             )
-                                        ),
-                                        fontWeight = FontWeight.W500,
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(0.8f)
-                                    )
+                                        }
+                                        Text(
+                                            text = f.name,
+                                            fontWeight = FontWeight.W500,
+                                            modifier = Modifier.width((windowInfo.containerSize.width / 18).dp),
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.titleLarge
+                                        )
+                                        Text(
+                                            friendsLocations[i],
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(0.75f),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    if (i != userData.friends.size - 1) {
+                                        HorizontalDivider(thickness = 2.dp)
+                                    }
+                                    Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                                 }
                             }
                         }
-                        Text(
-                            text = userData.name,
-                            fontWeight = FontWeight.W600,
-                            fontSize = 42.sp
-                        )
-                        Text(
-                            text = userData.bio,
-                            fontWeight = FontWeight.W700,
-                            fontSize = 30.sp
-                        )
-                        Text(
-                            text = "${cnt[1]} ${
-                                userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).toJavaLocalDateTime().format(
-                                    DateTimeFormatter.ofPattern(
-                                        "yyyy dd MMMM",
-                                        Locale.getDefault()
+                    } else {
+                        items((0..5).toList()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable{},
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(Modifier.weight(1f).padding(12.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .shimmer()
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .size((windowInfo.containerSize.width / 16).dp)
+                                            .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
                                     )
-                                )
-                            }",
-                            fontWeight = FontWeight.W600,
-                            fontSize = 24.sp,
-                            color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
-                        )
-                        if (geocodeState is ApiState.Success) {
-                            Text(
-                                (geocodeState as ApiState.Success).data.toString(),
-                                color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
-                                fontWeight = FontWeight.W600,
-                                style = MaterialTheme.typography.titleLarge,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
+                                    Box(
+                                        modifier = Modifier
+                                            .shimmer()
+                                            .weight(1f)
+                                            .height(30.dp)
+                                            .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .shimmer()
+                                            .weight(1f)
+                                            .height(30.dp)
+                                            .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+                                    )
+                                }
+                            }
+                            if (it != 5) {
+                                HorizontalDivider(thickness = 2.dp)
+                            }
+                            Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                         }
-                        if (geocodeState is ApiState.Loading || geocodeState is ApiState.Error) {
-                            CircularProgressIndicator()
+                    }
+                    itemsIndexed(settings) { i, it ->
+                        SettingsCard(it)
+                        if (i != settings.size - 1) {
+                            HorizontalDivider()
                         }
                     }
-                    Spacer(Modifier.height(24.dp))
-                    Text(
-                        cnt[2],
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                        modifier = Modifier.padding(16.dp),
-                        fontWeight = FontWeight.W500
-                    )
                 }
-                itemsIndexed(settings) { i, it ->
-                    SettingsCard(it)
-                    if (i != settings.size - 1) {
-                        HorizontalDivider()
-                    }
-                }
-                item {
-                    Text(
-                        "${cnt[0]}: ${userData.friends.size}",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                        modifier = Modifier.padding(16.dp),
-                        fontWeight = FontWeight.W500
-                    )
-                }
-                itemsIndexed(userData.friends) { i, f ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable {},
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Box(Modifier.weight(1f).padding(12.dp)) {
-                            AsyncImage(
-                                model = f.avatar,
-                                contentDescription = null,
-                                contentScale = ContentScale.FillBounds,
-                                modifier = Modifier
-                                    .size((windowInfo.containerSize.width / 16).dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                            )
-                        }
-                        Text(
-                            text = f.name,
-                            fontWeight = FontWeight.W500,
-                            modifier = Modifier.width((windowInfo.containerSize.width / 18).dp),
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            friendsLocations[i],
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onBackground.copy(0.75f),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (i != userData.friends.size - 1) {
-                        HorizontalDivider(thickness = 2.dp)
-                    }
-                    Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
-                }
+            }
+            AnimatedVisibility(isEdit) {
+
             }
         }
     } else {

@@ -18,7 +18,8 @@ val Context.userData by dataStore(
 
 interface UserDataRepo {
     val userData: Flow<UserData>
-    suspend fun setUserData(data: User)
+    suspend fun setUserDataNet(data: User)
+    suspend fun setUserData(data: UserData)
 }
 
 class UserDataRepository(context: Context): UserDataRepo {
@@ -27,7 +28,7 @@ class UserDataRepository(context: Context): UserDataRepo {
     override val userData: Flow<UserData> = dataStore.data
 
     @OptIn(ExperimentalTime::class)
-    override suspend fun setUserData(data: User) {
+    override suspend fun setUserDataNet(data: User) {
         val friends = mutableListOf<FriendUser>()
         for(friend in data.friends) {
             val friendsFriend = mutableListOf<FriendData>()
@@ -106,5 +107,7 @@ class UserDataRepository(context: Context): UserDataRepo {
                 .build()
         }
     }
+
+    override suspend fun setUserData(data: UserData) { dataStore.updateData { data } }
 
 }
