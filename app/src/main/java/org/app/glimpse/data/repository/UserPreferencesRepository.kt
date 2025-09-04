@@ -13,9 +13,11 @@ interface UserPreferences {
     val token: Flow<String>
     val startRoute: Flow<String>
     val isServiceRun: Flow<Boolean>
+    val userLang: Flow<String>
     suspend fun setToken(token: String)
     suspend fun setStartRoute(route: String)
     suspend fun toggleServiceRun(bool: Boolean)
+    suspend fun setUserLang(lang: String)
 }
 
 val Context.userPreferences by preferencesDataStore("userPreferences")
@@ -32,6 +34,16 @@ class UserPreferencesRepository(context: Context): UserPreferences {
 
     override val isServiceRun: Flow<Boolean> = dataStore.data.map {
         it[booleanPreferencesKey("is_service_run")] ?: false
+    }
+
+    override val userLang: Flow<String> = dataStore.data.map {
+        it[stringPreferencesKey("user_lang")] ?: "en"
+    }
+
+    override suspend fun setUserLang(lang: String) {
+        dataStore.edit {
+            it[stringPreferencesKey("user_lang")] = lang
+        }
     }
 
     override suspend fun toggleServiceRun(bool: Boolean) {
@@ -51,4 +63,5 @@ class UserPreferencesRepository(context: Context): UserPreferences {
             it[stringPreferencesKey("start_route")] = route
         }
     }
+
 }

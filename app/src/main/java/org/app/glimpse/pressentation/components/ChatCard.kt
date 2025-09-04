@@ -18,11 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import org.app.glimpse.R
 import org.app.glimpse.data.network.FriendUser
 
@@ -35,6 +38,7 @@ fun ChatCard(
 ){
     val windowInfo = LocalWindowInfo.current
     val width = windowInfo.containerSize.width.dp
+    val context = LocalContext.current
     Row(
         modifier = Modifier.width(width),
         verticalAlignment = Alignment.CenterVertically,
@@ -43,6 +47,9 @@ fun ChatCard(
         AsyncImage(
             model = friend.avatar,
             contentDescription = "",
+            imageLoader = ImageLoader.Builder(context)
+                .components { add(OkHttpNetworkFetcherFactory( createUnsafeOkHttpClient())) }
+                .build(),
             contentScale = ContentScale.FillBounds,
             modifier = Modifier
                 .size((windowInfo.containerSize.width / 18).dp)

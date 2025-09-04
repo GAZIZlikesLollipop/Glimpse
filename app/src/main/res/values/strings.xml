@@ -20,6 +20,9 @@
         <item>Friends</item>
         <item>Join in</item>
         <item>Settings</item>
+        <item>Are you sure you want to delete account?</item>
+        <item>Yes</item>
+        <item>No</item>
     </string-array>
 
     <string-array name="settings">

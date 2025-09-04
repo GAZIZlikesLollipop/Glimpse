@@ -7,8 +7,8 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,13 +26,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ExitToApp
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,18 +55,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.valentinilk.shimmer.shimmer
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
@@ -74,7 +80,7 @@ import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.User
-import org.app.glimpse.pressentation.components.SettingsCard
+import org.app.glimpse.pressentation.components.createUnsafeOkHttpClient
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.time.ExperimentalTime
@@ -96,6 +102,8 @@ fun ProfileScreen(
         var isEdit by rememberSaveable { mutableStateOf(false) }
         val data = (apiState as ApiState.Success).data as User
         var isFriends by rememberSaveable { mutableStateOf(false) }
+        var isDeleteAccount by rememberSaveable { mutableStateOf(false) }
+        val userLang by apiViewModel.userLang.collectAsState()
         val userData: FriendUser = when {
             userId == data.id -> {
                 isUser = true
@@ -211,7 +219,9 @@ fun ProfileScreen(
                         }
                     }
                 }
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
                     item {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -224,12 +234,15 @@ fun ProfileScreen(
                             ) {
                                 AsyncImage(
                                     model = userData.avatar,
+                                    imageLoader = ImageLoader.Builder(context)
+                                        .components { add(OkHttpNetworkFetcherFactory( createUnsafeOkHttpClient())) }
+                                        .build(),
                                     contentDescription = null,
                                     contentScale = ContentScale.FillBounds,
                                     modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
                                         .clip(RoundedCornerShape(20.dp)),
                                 )
-                                if (userData.createdAt != userData.updatedAt) {
+                                if (userData.createdAt != userData.updatedAt && userData.createdAt.toEpochMilliseconds() != userData.updatedAt.toEpochMilliseconds()) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.End,
@@ -281,7 +294,8 @@ fun ProfileScreen(
                                 }",
                                 fontWeight = FontWeight.W600,
                                 fontSize = 24.sp,
-                                color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
+                                color = MaterialTheme.colorScheme.onBackground.copy(0.75f),
+                                textAlign = TextAlign.Center
                             )
                             if (geocodeState is ApiState.Success) {
                                 Text(
@@ -297,18 +311,14 @@ fun ProfileScreen(
                             }
                         }
                         Spacer(Modifier.height(24.dp))
-                        Text(
-                            cnt[2],
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                            modifier = Modifier.padding(16.dp),
-                            fontWeight = FontWeight.W500
-                        )
                     }
                     item {
-                        Column {
+                        Column(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
                                     .clickable { isFriends = !isFriends },
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -323,112 +333,212 @@ fun ProfileScreen(
                                 Icon(
                                     imageVector = if (isFriends) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowUp,
                                     contentDescription = null,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(36.dp),
+                                    tint = MaterialTheme.colorScheme.onBackground.copy(0.7f)
                                 )
                             }
                             HorizontalDivider()
-                        }
-                    }
-                    if (userData.friends != null) {
-                        item {
-                            AnimatedVisibility(
-                                visible = isFriends,
-                                enter = slideInVertically(tween(300,50),{-it}),
-                                exit = slideOutVertically(tween(300,50),{-it}),
-//                                modifier = Modifier.zIndex(0f)
-                            ) {
-                                userData.friends.forEachIndexed { i, f ->
-                                    Row(
-                                        modifier = Modifier.zIndex(0f).fillMaxWidth().clickable {
-                                            if (f.friends == null) {
-                                                apiViewModel.getFriendFriends(f.id)
-                                                navController.navigate(Route.Profile.createRoute(f.id))
-                                            } else {
-                                                navController.navigate(Route.Profile.createRoute(f.id))
+                            if (userData.friends != null) {
+                                AnimatedVisibility(
+                                    visible = isFriends,
+                                    enter = slideInHorizontally(tween(300,50),{-it}),
+                                    exit = slideOutHorizontally(tween(300,50),{-it}),
+                                ) {
+                                    Column {
+                                        userData.friends.forEachIndexed { i, f ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        if (f.friends == null) {
+                                                            apiViewModel.getFriendFriends(f.id)
+                                                            navController.navigate(
+                                                                Route.Profile.createRoute(
+                                                                    f.id
+                                                                )
+                                                            )
+                                                        } else {
+                                                            navController.navigate(
+                                                                Route.Profile.createRoute(
+                                                                    f.id
+                                                                )
+                                                            )
+                                                        }
+                                                    },
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Box(Modifier.weight(0.7f).padding(12.dp)) {
+                                                    AsyncImage(
+                                                        model = f.avatar,
+                                                        contentDescription = null,
+                                                        imageLoader = ImageLoader.Builder(context)
+                                                            .components { add(OkHttpNetworkFetcherFactory( createUnsafeOkHttpClient())) }
+                                                            .build(),
+                                                        contentScale = ContentScale.FillBounds,
+                                                        modifier = Modifier
+                                                            .size((windowInfo.containerSize.width / 17).dp)
+                                                            .clip(RoundedCornerShape(16.dp))
+                                                    )
+                                                }
+                                                Text(
+                                                    text = f.name,
+                                                    fontWeight = FontWeight.W500,
+                                                    modifier = Modifier.width((windowInfo.containerSize.width / 18).dp),
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    textAlign = TextAlign.Center,
+                                                    style = MaterialTheme.typography.titleLarge
+                                                )
+                                                Text(
+                                                    friendsLocations[i],
+                                                    textAlign = TextAlign.Center,
+                                                    color = MaterialTheme.colorScheme.onBackground.copy(
+                                                        0.75f
+                                                    ),
+                                                    modifier = Modifier.weight(1f)
+                                                )
                                             }
-                                        },
+                                            if (i != userData.friends.size - 1) {
+                                                HorizontalDivider(thickness = 2.dp)
+                                            }
+                                            Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
+                                        }
+                                    }
+                                }
+                            } else {
+                                (0..5).toList().forEach {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().clickable{},
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Box(Modifier.weight(1f).padding(12.dp)) {
-                                            AsyncImage(
-                                                model = f.avatar,
-                                                contentDescription = null,
-                                                contentScale = ContentScale.FillBounds,
+                                        Row(Modifier.weight(1f).padding(12.dp)) {
+                                            Box(
                                                 modifier = Modifier
-                                                    .size((windowInfo.containerSize.width / 16).dp)
+                                                    .shimmer()
                                                     .clip(RoundedCornerShape(16.dp))
+                                                    .size((windowInfo.containerSize.width / 16).dp)
+                                                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .shimmer()
+                                                    .weight(1f)
+                                                    .height(30.dp)
+                                                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .shimmer()
+                                                    .weight(1f)
+                                                    .height(30.dp)
+                                                    .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
                                             )
                                         }
-                                        Text(
-                                            text = f.name,
-                                            fontWeight = FontWeight.W500,
-                                            modifier = Modifier.width((windowInfo.containerSize.width / 18).dp),
-                                            overflow = TextOverflow.Ellipsis,
-                                            textAlign = TextAlign.Center,
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                        Text(
-                                            friendsLocations[i],
-                                            textAlign = TextAlign.Center,
-                                            color = MaterialTheme.colorScheme.onBackground.copy(0.75f),
-                                            modifier = Modifier.weight(1f)
-                                        )
                                     }
-                                    if (i != userData.friends.size - 1) {
+                                    if (it != 5) {
                                         HorizontalDivider(thickness = 2.dp)
                                     }
                                     Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                                 }
                             }
                         }
-                    } else {
-                        items((0..5).toList()) {
+                        Text(
+                            cnt[2],
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
+                            modifier = Modifier.padding(16.dp),
+                            fontWeight = FontWeight.W500
+                        )
+                    }
+                    items(settings) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    when(it){
+                                        settings[1] -> {
+                                            navController.navigate(Route.Login.route)
+                                            apiViewModel.setRoute(Route.Login.route)
+                                        }
+                                        settings[2] -> isDeleteAccount = true
+                                        else -> if(userLang == "en") apiViewModel.setUserLang("ru") else apiViewModel.setUserLang("en")
+                                    }
+                                }
+                        ){
+                            val color = if(it == settings[0]) MaterialTheme.colorScheme.onBackground.copy(0.5f) else MaterialTheme.colorScheme.error.copy(0.5f)
                             Row(
-                                modifier = Modifier.fillMaxWidth().clickable{},
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Row(Modifier.weight(1f).padding(12.dp)) {
-                                    Box(
-                                        modifier = Modifier
-                                            .shimmer()
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .size((windowInfo.containerSize.width / 16).dp)
-                                            .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .shimmer()
-                                            .weight(1f)
-                                            .height(30.dp)
-                                            .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .shimmer()
-                                            .weight(1f)
-                                            .height(30.dp)
-                                            .background(MaterialTheme.colorScheme.onBackground.copy(0.5f))
-                                    )
-                                }
+                                Icon(
+                                    imageVector =
+                                        when(it){
+                                            settings[1] -> Icons.AutoMirrored.Rounded.ExitToApp
+                                            settings[2] -> Icons.Rounded.Delete
+                                            else -> ImageVector.vectorResource(R.drawable.language)
+                                        },
+                                    contentDescription = null,
+                                    tint = color
+                                )
+                                Text(
+                                    if(it == settings[0]) "${it}: $userLang" else it,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = color
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = color
+                                )
                             }
-                            if (it != 5) {
-                                HorizontalDivider(thickness = 2.dp)
-                            }
-                            Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
+                            if(it != settings[2]) HorizontalDivider(color = color)
                         }
                     }
-                    itemsIndexed(settings) { i, it ->
-                        SettingsCard(it)
-                        if (i != settings.size - 1) {
-                            HorizontalDivider()
-                        }
+                    item {
+                        Spacer(Modifier.height(20.dp))
                     }
                 }
             }
+            if(isDeleteAccount){
+                AlertDialog(
+                    onDismissRequest = {
+                        isDeleteAccount = false
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                isDeleteAccount = false
+                                navController.navigate(Route.Login.route)
+                                apiViewModel.deleteAccount()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text(
+                                cnt[4]
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = { isDeleteAccount = false }
+                        ) {
+                            Text(
+                                cnt[5]
+                            )
+                        }
+                    },
+                    title = {
+                        Text(cnt[3])
+                    },
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
             AnimatedVisibility(isEdit) {
-
+                
             }
         }
     } else {

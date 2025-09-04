@@ -44,13 +44,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toLocalDateTime
@@ -59,12 +62,11 @@ import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.Message
 import org.app.glimpse.data.network.User
+import org.app.glimpse.pressentation.components.createUnsafeOkHttpClient
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import kotlin.collections.forEach
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 @Composable
 fun ChatScreen(
@@ -74,6 +76,7 @@ fun ChatScreen(
     apiViewModel: ApiViewModel
 ) {
     val apiState by apiViewModel.userData.collectAsState()
+    val context = LocalContext.current
     if(apiState is ApiState.Success) {
         val userData = (apiState as ApiState.Success).data as User
         val rawMessages = (userData.sentMessages.filter { it.receivedId == friendId } + userData.receivedMessages.filter { it.senderId == friendId }).sortedBy { it.createdAt }
@@ -114,6 +117,9 @@ fun ChatScreen(
             ) {
                 AsyncImage(
                     model = data?.avatar,
+                    imageLoader = ImageLoader.Builder(context)
+                        .components { add(OkHttpNetworkFetcherFactory( createUnsafeOkHttpClient())) }
+                        .build(),
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier

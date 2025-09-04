@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.delete
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
@@ -43,12 +44,16 @@ interface ApiRepo {
     suspend fun startWebSocket(token: String, onReceived: (User) -> Unit, isSend: Boolean)
     suspend fun updateUserData(token: String,data: UpdateUser)
     suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
+    suspend fun deleteAccount(token: String)
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
     val host = "10.0.2.2"
 //    val host = "192.168.1.12"
 
+    override suspend fun deleteAccount(token: String) {
+        httpClient.delete("https://$host:8080/api/users") { header("Authorization", "Bearer $token") }
+    }
     override suspend fun getLocation(
         longitude: Double,
         latitude: Double,

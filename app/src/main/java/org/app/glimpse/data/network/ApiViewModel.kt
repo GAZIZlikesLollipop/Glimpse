@@ -82,6 +82,18 @@ class ApiViewModel(
             Route.Login.route
         )
 
+    val userLang = userPreferencesRepository.userLang
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            "en"
+        )
+
+    fun setUserLang(lang: String){
+        viewModelScope.launch {
+            userPreferencesRepository.setUserLang(lang)
+        }
+    }
 
     fun signIn(
         userName: String,
@@ -290,6 +302,21 @@ class ApiViewModel(
                      Log.e("Network",e.localizedMessage ?: "")
                  }
              }
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            _userData.value = ApiState.Initial
+            userPreferencesRepository.setStartRoute(Route.Login.route)
+            apiRepository.deleteAccount(token.value)
+        }
+    }
+
+    fun setRoute(route: String){
+        viewModelScope.launch {
+            _userData.value = ApiState.Initial
+            userPreferencesRepository.setStartRoute(route)
         }
     }
 
