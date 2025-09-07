@@ -141,7 +141,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     @OptIn(InternalAPI::class)
     override suspend fun updateUserData(token: String, data: UpdateUser) {
         httpClient.submitFormWithBinaryData(
-            url = "https://$host:8080/api/user",
+            url = "https://$host:8080/api/users",
             formData = formData {
                 append("name", data.name)
                 if(data.password != null) {

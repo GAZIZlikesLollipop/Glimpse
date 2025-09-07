@@ -23,6 +23,13 @@
         <item>Are you sure you want to delete account?</item>
         <item>Yes</item>
         <item>No</item>
+        <item>has not friends</item>
+        <item>Update</item>
+        <item>User name</item>
+        <item>Password</item>
+        <item>About</item>
+        <item>Avatar</item>
+        <item>Edit data</item>
     </string-array>
 
     <string-array name="settings">

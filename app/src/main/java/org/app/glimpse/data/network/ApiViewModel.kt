@@ -320,6 +320,18 @@ class ApiViewModel(
         }
     }
 
+    fun updateUser(
+        data: UpdateUser
+    ){
+        viewModelScope.launch {
+            try {
+                apiRepository.updateUserData(token.value,data)
+            } catch(e: Exception) {
+                Log.e("Update",e.localizedMessage ?: "")
+            }
+        }
+    }
+
 }
 
 class ApiViewModelFactory(

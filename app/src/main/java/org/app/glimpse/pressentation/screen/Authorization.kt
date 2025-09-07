@@ -4,7 +4,6 @@ package org.app.glimpse.pressentation.screen
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -392,10 +391,12 @@ fun RegisterScreen(
                                 location.longitude
                             )
                         }
-                        val inta = Intent(context,LocationTrackingService::class.java).apply {
-                            action = LocationTrackingService.Actions.START_TRACKING.name
+                        if(apiState is ApiState.Success) {
+                            val inta = Intent(context, LocationTrackingService::class.java).apply {
+                                action = LocationTrackingService.Actions.START_TRACKING.name
+                            }
+                            ContextCompat.startForegroundService(context, inta)
                         }
-                        ContextCompat.startForegroundService(context,inta)
                     }
                 },
                 enabled = loginField.isNotBlank() && passwordField.isNotBlank() && aboutField.isNotBlank() && apiState !is ApiState.Loading && avatarField != null,
@@ -658,10 +659,12 @@ fun LoginScreen(
                     }
                 } else {
                     apiViewModel.signIn(loginField,passwordField)
-                    val inta = Intent(context,LocationTrackingService::class.java).apply {
-                        action = LocationTrackingService.Actions.START_TRACKING.name
+                    if(apiState is ApiState.Success) {
+                        val inta = Intent(context, LocationTrackingService::class.java).apply {
+                            action = LocationTrackingService.Actions.START_TRACKING.name
+                        }
+                        ContextCompat.startForegroundService(context,inta)
                     }
-                    ContextCompat.startForegroundService(context,inta)
                 }
                 Log.d("HELLO","$hasNotifPermission, $hasFinePermission, $hasBackPermission")
             },
