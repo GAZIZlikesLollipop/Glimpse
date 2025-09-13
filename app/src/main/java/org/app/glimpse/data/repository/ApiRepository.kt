@@ -5,10 +5,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -42,7 +44,7 @@ interface ApiRepo {
     suspend fun signIn(login: String, password: String): String
     suspend fun signUp(data: SignUpUser)
     suspend fun startWebSocket(token: String, onReceived: (User) -> Unit, isSend: Boolean)
-    suspend fun updateUserData(token: String,data: UpdateUser)
+    suspend fun updateUserData(token: String, data: UpdateUser): User
     suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
     suspend fun deleteAccount(token: String)
 }
@@ -139,42 +141,54 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     @OptIn(InternalAPI::class)
-    override suspend fun updateUserData(token: String, data: UpdateUser) {
-        httpClient.submitFormWithBinaryData(
-            url = "https://$host:8080/api/users",
-            formData = formData {
-                append("name", data.name)
-                if(data.password != null) {
-                    append("password", data.password)
-                }
-                if(data.bio != null) {
-                    append("bio", data.bio)
-                }
-                if(data.avatar != null) {
-                    val stream = ByteArrayOutputStream()
-                    data.avatar.compress(Bitmap.CompressFormat.PNG,100,stream)
-                    val avatar = stream.toByteArray()
-                    append("avatar", avatar, Headers.build {
-                        append(HttpHeaders.ContentType, "application/octet-stream")
-                        append(HttpHeaders.ContentDisposition, "filename=\"${data.name}.${data.avatarExt}\"")
-                    })
-                }
-                if(data.latitude != null) {
-                    append("latitude", data.latitude)
-                }
-                if(data.longitude != null) {
-                    append("longitude", data.longitude)
-                }
-                if(data.friends != null) {
-                    append("friends",data.friends)
-                }
-                if(data.sentMessages != null) {
-                    append("sentMessages",data.sentMessages)
-                }
-                if(data.receivedMessages != null) {
-                    append("receivedMessages",data.receivedMessages)
-                }
-            }
-        )
+    override suspend fun updateUserData(token: String, data: UpdateUser): User {
+        val stream = ByteArrayOutputStream()
+        data.avatar?.compress(Bitmap.CompressFormat.PNG,100,stream)
+        val avatar = stream.toByteArray()
+        return httpClient.patch("https://$host:8080/api/users") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        if(data.name != null) {
+                            append("name", data.name)
+                        }
+                        if(data.password != null) {
+                            append("password", data.password)
+                        }
+                        if(data.bio != null) {
+                            append("bio", data.bio)
+                        }
+                        if(data.avatar != null) {
+                            append("avatar", avatar, Headers.build {
+                                append(HttpHeaders.ContentType, "application/octet-stream")
+                                append(HttpHeaders.ContentDisposition, "filename=\"${data.name ?: "User"}.${data.avatarExt ?: "png"}\"")
+                            })
+                        }
+                        if(data.latitude != null) {
+                            append("latitude", data.latitude)
+                        }
+                        if(data.longitude != null) {
+                            append("longitude", data.longitude)
+                        }
+                        if(data.friends != null) {
+                            for(f in data.friends) {
+                                append("friends",f)
+                            }
+                        }
+                        if(data.receivedMessages != null) {
+                            for(f in data.receivedMessages) {
+                                append("receivedMessages",f)
+                            }
+                        }
+                        if(data.sentMessages != null) {
+                            for(f in data.sentMessages) {
+                                append("sentMessages",f)
+                            }
+                        }
+                    }
+                )
+            )
+        }.body<User>()
     }
 }

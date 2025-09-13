@@ -11,14 +11,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.io.IOException
 import org.app.glimpse.Route
 import org.app.glimpse.UserData
 import org.app.glimpse.data.repository.ApiRepository
 import org.app.glimpse.data.repository.UserDataRepository
 import org.app.glimpse.data.repository.UserPreferencesRepository
 import java.util.Locale
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -293,14 +291,8 @@ class ApiViewModel(
              try {
                  userDataRepository.setUserDataNet(apiRepository.getUserData(token.value))
                  setUserData()
-             } catch (e: Throwable) {
-                 if (e is CancellationException) throw e
-                 if (e is IOException || e.cause is IOException) {
-                     setUserData()
-                 } else {
-                     _userData.value = ApiState.Error
-                     Log.e("Network",e.localizedMessage ?: "")
-                 }
+             } catch(_: Exception) {
+                 setUserData()
              }
         }
     }
@@ -325,7 +317,9 @@ class ApiViewModel(
     ){
         viewModelScope.launch {
             try {
-                apiRepository.updateUserData(token.value,data)
+                val response = apiRepository.updateUserData(token.value,data)
+                _userData.value = ApiState.Success(response)
+                userDataRepository.setUserDataNet(response)
             } catch(e: Exception) {
                 Log.e("Update",e.localizedMessage ?: "")
             }

@@ -24,7 +24,10 @@ object ApiService {
                     prettyPrint = true
                     isLenient = true
                     ignoreUnknownKeys = true
-                    serializersModule = SerializersModule { contextual(InstantSerialize) }
+                    serializersModule = SerializersModule {
+                        contextual(InstantSerialize)
+                        contextual(BitmapSerialize)
+                    }
                 }
             )
         }

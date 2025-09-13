@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -45,14 +46,20 @@ class LocationTrackingService: Service() {
             latitude = p0.lastLocation?.latitude ?: latitude
             longitude = p0.lastLocation?.longitude ?: longitude
             scope.launch {
-                apiRepository.updateUserData(
-                    userPreferencesRepository.token.first(),
-                    UpdateUser(
-                        userDataRepository.userData.first().name,
-                        latitude = latitude,
-                        longitude = longitude
+                try {
+                    userDataRepository.setUserDataNet(
+                        apiRepository.updateUserData(
+                            userPreferencesRepository.token.first(),
+                            UpdateUser(
+                                userDataRepository.userData.first().name,
+                                latitude = latitude,
+                                longitude = longitude
+                            )
+                        )
                     )
-                )
+                } catch(e: Exception) {
+                    Log.e("Update",e.localizedMessage ?: "")
+                }
             }
         }
     }

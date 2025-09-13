@@ -187,6 +187,11 @@ fun ProfileScreen(
             } else {
                 navController.popBackStack()
             }
+            if(!isEdit) {
+                navController.popBackStack()
+            } else {
+                isEdit = false
+            }
         }
 
         LaunchedEffect(Unit) {
@@ -242,7 +247,9 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Button(
-                        onClick = { navController.popBackStack() },
+                        onClick = {
+                            if(!isEdit) navController.popBackStack() else isEdit = false
+                        },
                         shape = RoundedCornerShape(20.dp),
                         contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -593,77 +600,6 @@ fun ProfileScreen(
                             modifier = Modifier.padding(16.dp)
                         )
                     }
-                    if (isChange) {
-                        Box(
-                            modifier = Modifier
-                                .pointerInput(Unit) {
-                                    detectTapGestures { isChange = false }
-                                }
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background.copy(0.8f)),
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                AsyncImage(
-                                    model = avatarField,
-                                    contentDescription = null,
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Column(
-                                        modifier = Modifier.clip(CircleShape).clickable {
-                                            isChange = false
-                                            avatarField = null
-                                        },
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Delete,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.padding(8.dp).size(36.dp)
-                                        )
-                                        Text(
-                                            cnt[8],
-                                            color = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.padding(8.dp),
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    Column(
-                                        modifier = Modifier.clip(CircleShape).clickable {
-                                            photoPicker.launch(
-                                                PickVisualMediaRequest(
-                                                    ActivityResultContracts.PickVisualMedia.ImageOnly
-                                                )
-                                            )
-                                        },
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Edit,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(8.dp).size(36.dp)
-                                        )
-                                        Text(
-                                            cnt[9],
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(8.dp),
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
                 } else {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -818,13 +754,18 @@ fun ProfileScreen(
                                 focusManager.clearFocus()
                                 apiViewModel.updateUser(
                                     UpdateUser(
-                                        loginField,
-                                        passwordField,
-                                        aboutField,
+                                        loginField.ifBlank { null },
+                                        passwordField.ifBlank { null },
+                                        aboutField.ifBlank { null },
                                         avatarField,
-                                        avatarExt = extField,
+                                        avatarExt = extField.ifBlank { null },
                                     )
                                 )
+                                loginField = ""
+                                passwordField = ""
+                                aboutField = ""
+                                avatarField = null
+                                extField = ""
                             },
                             enabled = (loginField.isNotBlank() || passwordField.isNotBlank() || aboutField.isNotBlank() || avatarField != null) && apiState !is ApiState.Loading,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
@@ -833,6 +774,77 @@ fun ProfileScreen(
                                 cnt[7],
                                 style = MaterialTheme.typography.headlineMedium
                             )
+                        }
+                    }
+                }
+            }
+            if (isChange) {
+                Box(
+                    modifier = Modifier
+                        .pointerInput(Unit) {
+                            detectTapGestures { isChange = false }
+                        }
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background.copy(0.8f)),
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        AsyncImage(
+                            model = avatarField,
+                            contentDescription = null,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Column(
+                                modifier = Modifier.clip(CircleShape).clickable {
+                                    isChange = false
+                                    avatarField = null
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(8.dp).size(36.dp)
+                                )
+                                Text(
+                                    cnt[8],
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(8.dp),
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Column(
+                                modifier = Modifier.clip(CircleShape).clickable {
+                                    photoPicker.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        )
+                                    )
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(8.dp).size(36.dp)
+                                )
+                                Text(
+                                    cnt[9],
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(8.dp),
+                                    style = MaterialTheme.typography.titleLarge
+                                )
+                            }
                         }
                     }
                 }

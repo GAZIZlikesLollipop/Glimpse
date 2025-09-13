@@ -98,8 +98,12 @@ fun MainScreen(
     var isAdd by rememberSaveable { mutableStateOf(false) }
     val apiState by apiViewModel.userData.collectAsState()
 
+    LaunchedEffect(Unit) {
+        apiViewModel.getOwnData()
+    }
+
     LaunchedEffect(isDarkTheme) {
-        if(apiState is ApiState.Initial) { apiViewModel.getOwnData() }
+//        if(apiState is ApiState.Initial) { apiViewModel.getOwnData() }
         mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
     }
 

@@ -3,6 +3,8 @@
 package org.app.glimpse.data.network
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -11,6 +13,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import java.io.ByteArrayOutputStream
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -74,11 +77,12 @@ data class SignUpUser(
     val longitude: Double
 )
 
+@Serializable
 data class UpdateUser(
-    val name: String,
+    val name: String? = null,
     val password: String? = null,
     val bio: String? = null,
-    val avatar: Bitmap? = null,
+    @Serializable(BitmapSerialize::class) val avatar: Bitmap? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val friends: List<FriendUser>? = null,
@@ -104,5 +108,22 @@ object InstantSerialize: KSerializer<Instant> {
 
     override fun deserialize(decoder: Decoder): Instant {
         return Instant.parse(decoder.decodeString())
+    }
+}
+object BitmapSerialize: KSerializer<Bitmap> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Bitmap", PrimitiveKind.STRING)
+    override fun serialize(
+        encoder: Encoder,
+        value: Bitmap
+    ) {
+        val baos = ByteArrayOutputStream()
+        value.compress(Bitmap.CompressFormat.PNG,100,baos)
+        val byteArray = baos.toByteArray()
+        encoder.encodeString(Base64.encodeToString(byteArray, Base64.DEFAULT))
+    }
+
+    override fun deserialize(decoder: Decoder): Bitmap {
+        val decodedBytes = Base64.decode(decoder.decodeString(), Base64.DEFAULT)
+        return BitmapFactory.decodeByteArray(decodedBytes,0,decodedBytes.size)
     }
 }
