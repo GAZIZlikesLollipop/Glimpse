@@ -3,8 +3,12 @@
 package org.app.glimpse.pressentation.screen
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.os.Build
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -54,14 +58,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnAttach
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -70,10 +77,7 @@ import com.valentinilk.shimmer.shimmer
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.map.IconStyle
-import com.yandex.mapkit.map.TextStyle
 import com.yandex.mapkit.mapview.MapView
-import com.yandex.runtime.image.ImageProvider
 import org.app.glimpse.R
 import org.app.glimpse.Route
 import org.app.glimpse.data.LocationTrackingService
@@ -81,7 +85,9 @@ import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.ChatCard
+import org.app.glimpse.pressentation.components.UserPlacemark
 
+@SuppressLint("LocalContextResourcesRead")
 @Composable
 fun MainScreen(
     paddingValues: PaddingValues,
@@ -97,13 +103,13 @@ fun MainScreen(
     val cnt = stringArrayResource(R.array.main_cnt)
     var isAdd by rememberSaveable { mutableStateOf(false) }
     val apiState by apiViewModel.userData.collectAsState()
+    val you by apiViewModel.you.collectAsState()
 
     LaunchedEffect(Unit) {
         apiViewModel.getOwnData()
     }
 
     LaunchedEffect(isDarkTheme) {
-//        if(apiState is ApiState.Initial) { apiViewModel.getOwnData() }
         mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
     }
 
@@ -142,6 +148,7 @@ fun MainScreen(
         }
     }
 
+    val ct = LocalContext.current
     Box(
         modifier = Modifier.fillMaxSize()
     ){
@@ -150,35 +157,53 @@ fun MainScreen(
                 modifier = Modifier.fillMaxSize(),
                 factory = {
                     mapView.apply {
-                        val userData = (apiState as ApiState.Success).data as User
-                        mapWindow.map.mapObjects.addPlacemark().apply {
-                            geometry = Point(userData.latitude,userData.longitude)
-                            setText(
-                                userData.name,
-                                TextStyle().apply {
-                                    this.placement = TextStyle.Placement.BOTTOM
-                                    this.offset = -10.0f
-                                    this.size = 12f
-                                    this.color = 1
-                                }
-                            )
-                            setIcon(
-                                ImageProvider.fromResource(context,R.drawable.navigation),
-//                                ImageProvider.fromResource(context, R.drawable.my_location),
-                                IconStyle().apply {
-                                    scale = 1f
-                                    zIndex = 10f
-                                }
+                        val activity = ct as Activity
+                        val root = activity.findViewById<ViewGroup>(android.R.id.content)
+
+                        val userView = ComposeView(ct).apply {
+                            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                            layoutParams = FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
                             )
                         }
+
+                        val hiddenHost = FrameLayout(ct).apply {
+                            translationX = -10_000f // offscreen, но прикреплён к окну
+                            addView(userView)
+                        }
+
+                        root.addView(hiddenHost)
+
+                        val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(you.latitude,you.longitude)}
+
+                        userView.doOnAttach {
+                            userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root, hiddenHost) }
+                        }
+
+                        for(friend in you.friendsList){
+                            val friendView = ComposeView(ct).apply {
+                                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                                layoutParams = FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                            }
+                            friendView.doOnAttach {
+                                friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,placemark,root,hiddenHost) }
+                            }
+                        }
+
                         mapWindow.map.move(
                             CameraPosition(
-                                Point(userData.latitude,userData.longitude),
-                                18.0f,
+                                Point(you.latitude,you.longitude),
+                                18f,
                                 0f,
                                 0f
-                            )
+                            ),
+                            Animation(Animation.Type.SMOOTH,2f)
                         )
+                        {}
                     }
                 },
                 update = {}
@@ -206,7 +231,7 @@ fun MainScreen(
                                 0f,
                                 0f,
                             ),
-                            Animation(Animation.Type.SMOOTH, 1.0f),
+                            Animation(Animation.Type.SMOOTH, 2f),
                             {}
                         )
                     }

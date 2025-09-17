@@ -25,7 +25,7 @@ yandexApiKey="ВАШ_АПИ_КЛЮЧ"
 1. ~~Доделать sign up screen and sign up features~~
 2. ~~Создать хеширование данных пользвоателей на их же устрйостве~~
 3. ~~Настроить и добавить работу с GPS~~
-4. Доделать profile screen (удаления аккунта, настройка приложения и измнение профиля)
-5. Настроить map objetcs и offline maps в main screen 
+4. ~~Доделать profile screen (удаления аккунта, настройка приложения и измнение профиля)~~
+5. ~~Настроить map objetcs и offline maps в main screen~~ 
 6. Сделать экран для добавления и поиска друзей
 7. Настроить до конца webSocket integration в chat screen

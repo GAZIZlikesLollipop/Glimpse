@@ -40,21 +40,25 @@ class LocationTrackingService: Service() {
     private lateinit var userDataRepository: UserDataRepository
     private lateinit var fusedClient: FusedLocationProviderClient
     private val callback = object:  LocationCallback() {
-        private var latitude = 0.0
-        private var longitude = 0.0
+        var latitude = 0.0
+        var longitude = 0.0
         override fun onLocationResult(p0: LocationResult) {
             latitude = p0.lastLocation?.latitude ?: latitude
             longitude = p0.lastLocation?.longitude ?: longitude
             scope.launch {
                 try {
-                    userDataRepository.setUserDataNet(
-                        apiRepository.updateUserData(
-                            userPreferencesRepository.token.first(),
-                            UpdateUser(
-                                userDataRepository.userData.first().name,
-                                latitude = latitude,
-                                longitude = longitude
-                            )
+                    userDataRepository.setUserData(
+                        userDataRepository.userData.first().toBuilder()
+                            .setLatitude(latitude)
+                            .setLongitude(longitude)
+                            .build()
+                    )
+                    apiRepository.updateUserData(
+                        userPreferencesRepository.token.first(),
+                        UpdateUser(
+                            userDataRepository.userData.first().name,
+                            latitude = latitude,
+                            longitude = longitude
                         )
                     )
                 } catch(e: Exception) {
