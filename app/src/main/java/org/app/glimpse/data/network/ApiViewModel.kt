@@ -2,6 +2,7 @@ package org.app.glimpse.data.network
 
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -325,7 +326,12 @@ class ApiViewModel(
             }
         }
     }
-
+    val userNames = mutableStateListOf<Users>()
+    fun getUserNames() {
+       viewModelScope.launch {
+           userNames.addAll(apiRepository.getUserNames())
+       }
+    }
 }
 
 class ApiViewModelFactory(

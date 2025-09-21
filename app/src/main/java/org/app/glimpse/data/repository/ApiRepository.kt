@@ -29,6 +29,7 @@ import org.app.glimpse.data.network.GeocoderResponse
 import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.UpdateUser
 import org.app.glimpse.data.network.User
+import org.app.glimpse.data.network.Users
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import java.util.Scanner
@@ -47,6 +48,7 @@ interface ApiRepo {
     suspend fun updateUserData(token: String, data: UpdateUser): User
     suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
     suspend fun deleteAccount(token: String)
+    suspend fun getUserNames(): List<Users>
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
@@ -190,5 +192,9 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
                 )
             )
         }.body<User>()
+    }
+
+    override suspend fun getUserNames(): List<Users> {
+        return httpClient.get("https://$host:8080/users").body()
     }
 }

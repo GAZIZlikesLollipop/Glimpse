@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -85,6 +86,7 @@ import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.ChatCard
+import org.app.glimpse.pressentation.components.FriendAdd
 import org.app.glimpse.pressentation.components.UserPlacemark
 
 @SuppressLint("LocalContextResourcesRead")
@@ -162,10 +164,6 @@ fun MainScreen(
 
                         val userView = ComposeView(ct).apply {
                             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-                            layoutParams = FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT
-                            )
                         }
 
                         val hiddenHost = FrameLayout(ct).apply {
@@ -178,16 +176,12 @@ fun MainScreen(
                         val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(you.latitude,you.longitude)}
 
                         userView.doOnAttach {
-                            userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root, hiddenHost) }
+                            userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root,hiddenHost) }
                         }
 
                         for(friend in you.friendsList){
                             val friendView = ComposeView(ct).apply {
                                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-                                layoutParams = FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                                    ViewGroup.LayoutParams.WRAP_CONTENT
-                                )
                             }
                             friendView.doOnAttach {
                                 friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,placemark,root,hiddenHost) }
@@ -304,12 +298,12 @@ fun MainScreen(
                     transitionSpec = {
                         if (!isAdd) {
                             slideInHorizontally(tween(450, 50),
-                                { it }) togetherWith slideOutHorizontally(tween(550, 50),
-                                { -it })
-                        } else {
-                            slideInHorizontally(tween(450, 50),
                                 { -it }) togetherWith slideOutHorizontally(tween(550, 50),
                                 { it })
+                        } else {
+                            slideInHorizontally(tween(450, 50),
+                                { it }) togetherWith slideOutHorizontally(tween(550, 50),
+                                { -it })
                         }
                     }
                 ) { state ->
@@ -464,7 +458,13 @@ fun MainScreen(
                             }
                         }
                     } else {
-
+                        BackHandler {
+                            isAdd = false
+                        }
+                        FriendAdd(
+                            apiViewModel,
+                            { isAdd = false }
+                        )
                     }
                 }
             }

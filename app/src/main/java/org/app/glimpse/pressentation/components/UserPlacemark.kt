@@ -1,6 +1,5 @@
 package org.app.glimpse.pressentation.components
 
-import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -74,18 +73,8 @@ fun UserPlacemark(
             contentScale = ContentScale.Crop,
             onSuccess = {
                 userView.post {
-                    userView.measure(
-                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                    )
-                    userView.layout(0, 0, userView.measuredWidth, userView.measuredHeight)
-
                     val vp = ViewProvider(userView, true)
-                    placemark.setView(vp) {
-                        root.post {
-                            try { root.removeView(hiddenHost) } catch (_: Exception) {}
-                        }
-                    }
+                    placemark.setView(vp) { root.post { root.removeView(hiddenHost) } }
                 }
             }
         )

@@ -60,6 +60,15 @@ data class FriendUser(
 )
 
 @Serializable
+data class Users(
+    val id: Long,
+    val name: String,
+    val avatar: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
+@Serializable
 data class GeocoderResponse(
     val name: String,
     @SerialName("display_name")

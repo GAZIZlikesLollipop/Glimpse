@@ -3,6 +3,8 @@
     <string-array name="main_cnt">
         <item>Friends</item>
         <item>You don\'t have friends, add it!</item>
+        <item>Search…</item>
+        <item>No results</item>
     </string-array>
 
     <string-array name="chat_cnt">
