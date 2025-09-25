@@ -329,8 +329,31 @@ class ApiViewModel(
     val userNames = mutableStateListOf<Users>()
     fun getUserNames() {
        viewModelScope.launch {
+           userNames.clear()
            userNames.addAll(apiRepository.getUserNames())
        }
+    }
+
+    fun addFriend(id: Long) {
+        viewModelScope.launch {
+            try {
+                apiRepository.addFriend(id,token.value)
+                _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
+            } catch(e: Exception) {
+                Log.e("FRIEND", e.localizedMessage ?: "")
+            }
+        }
+    }
+
+    fun deleteFriend(id: Long) {
+        viewModelScope.launch {
+            try {
+                apiRepository.deleteFriend(id,token.value)
+                _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
+            } catch(e: Exception) {
+                Log.e("FRIEND", e.localizedMessage ?: "")
+            }
+        }
     }
 }
 

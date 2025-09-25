@@ -34,7 +34,7 @@ fun ChatCard(
     friend: FriendUser,
     onLocation: () -> Unit,
     onChat: () -> Unit,
-    onProfile: () -> Unit,
+    onProfile: () -> Unit
 ){
     val windowInfo = LocalWindowInfo.current
     val width = windowInfo.containerSize.width.dp
@@ -42,7 +42,7 @@ fun ChatCard(
     Row(
         modifier = Modifier.width(width),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         AsyncImage(
             model = friend.avatar,

@@ -135,7 +135,7 @@ fun ProfileScreen(
         var isDeleteAccount by rememberSaveable { mutableStateOf(false) }
         val userLang by apiViewModel.userLang.collectAsState()
         var isChange by rememberSaveable { mutableStateOf(false) }
-        val userData: FriendUser = when {
+        val userData: FriendUser? = when {
             userId == data.id -> {
                 isUser = true
                 FriendUser(
@@ -153,7 +153,7 @@ fun ProfileScreen(
 
             else -> {
                 data.friends.find { it.id == userId } ?:
-                data.friends.find { ff -> ff.friends!!.find { it.id == userId } != null }!!
+                data.friends.find { ff -> ff.friends!!.find { it.id == userId } != null }
             }
         }
         var avatarField by remember { mutableStateOf<Bitmap?>(null) }
@@ -163,6 +163,7 @@ fun ProfileScreen(
         val context = LocalContext.current
         val geocoder = Geocoder(context, Locale.getDefault())
         val focusManager = LocalFocusManager.current
+        if(userData != null) {
         val friendsLocations = remember {
             mutableStateListOf(*Array(userData.friends?.size ?: 0) { "" }.toList().toTypedArray())
         }
@@ -234,38 +235,22 @@ fun ProfileScreen(
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(if(isEdit) 0.dp else 20.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = paddingValues.calculateTopPadding())
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(if(isEdit) 0.dp else 20.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            if(!isEdit) navController.popBackStack() else isEdit = false
-                        },
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                            MaterialTheme.colorScheme.onBackground
-                        ),
-                        modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = paddingValues.calculateTopPadding())
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                    if (isUser) {
                         Button(
-                            onClick = { isEdit = true },
+                            onClick = {
+                                if (!isEdit) navController.popBackStack() else isEdit = false
+                            },
                             shape = RoundedCornerShape(20.dp),
                             contentPadding = PaddingValues(0.dp),
                             colors = ButtonDefaults.buttonColors(
@@ -275,505 +260,544 @@ fun ProfileScreen(
                             modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Edit,
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = "Back"
                             )
                         }
-                    }
-                }
-                if (!isEdit) {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        item {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                        if (isUser) {
+                            Button(
+                                onClick = { isEdit = true },
+                                shape = RoundedCornerShape(20.dp),
+                                contentPadding = PaddingValues(0.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    MaterialTheme.colorScheme.onBackground
+                                ),
+                                modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        } else {
+                            if (data.friends.find { it.id == userId } != null) {
+                                Button(
+                                    onClick = {
+                                        navController.navigate(Route.Main.route)
+                                        apiViewModel.deleteFriend(userId)
+                                    },
+                                    shape = RoundedCornerShape(20.dp),
+                                    contentPadding = PaddingValues(0.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        MaterialTheme.colorScheme.error
+                                    ),
+                                    modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
                                 ) {
-                                    AsyncImage(
-                                        model = userData.avatar,
-                                        imageLoader = ImageLoader.Builder(context)
-                                            .components {
-                                                add(
-                                                    OkHttpNetworkFetcherFactory(
-                                                        createUnsafeOkHttpClient()
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.baseline_person_remove_24),
+                                        contentDescription = "Delete friend"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (!isEdit) {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            item {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    ) {
+                                        AsyncImage(
+                                            model = userData.avatar,
+                                            imageLoader = ImageLoader.Builder(context)
+                                                .components {
+                                                    add(
+                                                        OkHttpNetworkFetcherFactory(
+                                                            createUnsafeOkHttpClient()
+                                                        )
+                                                    )
+                                                }
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.FillBounds,
+                                            modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
+                                                .clip(RoundedCornerShape(20.dp)),
+                                        )
+                                        if (userData.createdAt != userData.updatedAt && userData.createdAt.toEpochMilliseconds() != userData.updatedAt.toEpochMilliseconds()) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.End,
+                                                modifier = Modifier.fillMaxWidth()
+                                                    .padding(horizontal = 16.dp)
+                                                    .offset(y = 8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Edit,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onBackground.copy(
+                                                        0.8f
+                                                    ),
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(
+                                                    text = userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
+                                                        .toJavaLocalDateTime().format(
+                                                            DateTimeFormatter.ofPattern(
+                                                                "yyyy.MM.dd",
+                                                                Locale.getDefault()
+                                                            )
+                                                        ),
+                                                    fontWeight = FontWeight.W500,
+                                                    fontSize = 16.sp,
+                                                    color = MaterialTheme.colorScheme.onBackground.copy(
+                                                        0.8f
                                                     )
                                                 )
                                             }
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.FillBounds,
-                                        modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
-                                            .clip(RoundedCornerShape(20.dp)),
-                                    )
-                                    if (userData.createdAt != userData.updatedAt && userData.createdAt.toEpochMilliseconds() != userData.updatedAt.toEpochMilliseconds()) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.End,
-                                            modifier = Modifier.fillMaxWidth()
-                                                .padding(horizontal = 16.dp)
-                                                .offset(y = 8.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Edit,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onBackground.copy(
-                                                    0.8f
-                                                ),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(
-                                                text = userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
-                                                    .toJavaLocalDateTime().format(
-                                                        DateTimeFormatter.ofPattern(
-                                                            "yyyy.MM.dd",
-                                                            Locale.getDefault()
-                                                        )
-                                                    ),
-                                                fontWeight = FontWeight.W500,
-                                                fontSize = 16.sp,
-                                                color = MaterialTheme.colorScheme.onBackground.copy(
-                                                    0.8f
-                                                )
-                                            )
                                         }
                                     }
-                                }
-                                Text(
-                                    text = userData.name,
-                                    fontWeight = FontWeight.W600,
-                                    fontSize = 42.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    text = userData.bio,
-                                    fontWeight = FontWeight.W700,
-                                    fontSize = 30.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                Text(
-                                    text = "${cnt[1]} ${
-                                        userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
-                                            .toJavaLocalDateTime().format(
-                                                DateTimeFormatter.ofPattern(
-                                                    "yyyy dd MMMM",
-                                                    Locale.getDefault()
-                                                )
-                                            )
-                                    }",
-                                    fontWeight = FontWeight.W600,
-                                    fontSize = 24.sp,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(0.75f),
-                                    textAlign = TextAlign.Center
-                                )
-                                if (geocodeState is ApiState.Success) {
                                     Text(
-                                        (geocodeState as ApiState.Success).data.toString(),
-                                        color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
+                                        text = userData.name,
                                         fontWeight = FontWeight.W600,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                        fontSize = 42.sp,
+                                        textAlign = TextAlign.Center
                                     )
-                                }
-                                if (geocodeState is ApiState.Loading || geocodeState is ApiState.Error) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                            Spacer(Modifier.height(24.dp))
-                        }
-                        item {
-                            if (userData.friends != null && userData.friends.isNotEmpty()) {
-                                Column(
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { isFriends = !isFriends },
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    Text(
+                                        text = userData.bio,
+                                        fontWeight = FontWeight.W700,
+                                        fontSize = 30.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Text(
+                                        text = "${cnt[1]} ${
+                                            userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
+                                                .toJavaLocalDateTime().format(
+                                                    DateTimeFormatter.ofPattern(
+                                                        "yyyy dd MMMM",
+                                                        Locale.getDefault()
+                                                    )
+                                                )
+                                        }",
+                                        fontWeight = FontWeight.W600,
+                                        fontSize = 24.sp,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(0.75f),
+                                        textAlign = TextAlign.Center
+                                    )
+                                    if (geocodeState is ApiState.Success) {
                                         Text(
-                                            "${cnt[0]}: ${userData.friends.size}",
-                                            style = MaterialTheme.typography.headlineLarge,
-                                            color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                                            modifier = Modifier.padding(16.dp),
-                                            fontWeight = FontWeight.W500
-                                        )
-                                        Icon(
-                                            imageVector = if (isFriends) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowUp,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(36.dp),
-                                            tint = MaterialTheme.colorScheme.onBackground.copy(0.7f)
+                                            (geocodeState as ApiState.Success).data.toString(),
+                                            color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
+                                            fontWeight = FontWeight.W600,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            modifier = Modifier.padding(horizontal = 16.dp)
                                         )
                                     }
-                                    HorizontalDivider()
-                                    AnimatedVisibility(
-                                        visible = isFriends,
-                                        enter = slideInHorizontally(tween(300, 50), { -it }),
-                                        exit = slideOutHorizontally(tween(300, 50), { -it }),
+                                    if (geocodeState is ApiState.Loading || geocodeState is ApiState.Error) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                                Spacer(Modifier.height(24.dp))
+                            }
+                            item {
+                                if (userData.friends != null && userData.friends.isNotEmpty()) {
+                                    Column(
+                                        modifier = Modifier.fillMaxSize()
                                     ) {
-                                        Column {
-                                            userData.friends.forEachIndexed { i, f ->
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable {
-                                                            if (f.friends == null) {
-                                                                apiViewModel.getFriendFriends(f.id)
-                                                                navController.navigate(
-                                                                    Route.Profile.createRoute(
-                                                                        f.id
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { isFriends = !isFriends },
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                "${cnt[0]}: ${userData.friends.size}",
+                                                style = MaterialTheme.typography.headlineLarge,
+                                                color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
+                                                modifier = Modifier.padding(16.dp),
+                                                fontWeight = FontWeight.W500
+                                            )
+                                            Icon(
+                                                imageVector = if (isFriends) Icons.Rounded.KeyboardArrowDown else Icons.Rounded.KeyboardArrowUp,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(36.dp),
+                                                tint = MaterialTheme.colorScheme.onBackground.copy(0.7f)
+                                            )
+                                        }
+                                        HorizontalDivider()
+                                        AnimatedVisibility(
+                                            visible = isFriends,
+                                            enter = slideInHorizontally(tween(300, 50), { -it }),
+                                            exit = slideOutHorizontally(tween(300, 50), { -it }),
+                                        ) {
+                                            Column {
+                                                userData.friends.forEachIndexed { i, f ->
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable {
+                                                                if (f.friends == null) {
+                                                                    apiViewModel.getFriendFriends(f.id)
+                                                                    navController.navigate(
+                                                                        Route.Profile.createRoute(
+                                                                            f.id
+                                                                        )
                                                                     )
-                                                                )
-                                                            } else {
-                                                                navController.navigate(
-                                                                    Route.Profile.createRoute(
-                                                                        f.id
-                                                                    )
-                                                                )
-                                                            }
-                                                        },
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween
-                                                ) {
-                                                    Box(Modifier.weight(0.7f).padding(12.dp)) {
-                                                        AsyncImage(
-                                                            model = f.avatar,
-                                                            contentDescription = null,
-                                                            imageLoader = ImageLoader.Builder(
-                                                                context
-                                                            )
-                                                                .components {
-                                                                    add(
-                                                                        OkHttpNetworkFetcherFactory(
-                                                                            createUnsafeOkHttpClient()
+                                                                } else {
+                                                                    navController.navigate(
+                                                                        Route.Profile.createRoute(
+                                                                            f.id
                                                                         )
                                                                     )
                                                                 }
-                                                                .build(),
-                                                            contentScale = ContentScale.FillBounds,
-                                                            modifier = Modifier
-                                                                .size((windowInfo.containerSize.width / 17).dp)
-                                                                .clip(RoundedCornerShape(16.dp))
+                                                            },
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        Box(Modifier.weight(0.7f).padding(12.dp)) {
+                                                            AsyncImage(
+                                                                model = f.avatar,
+                                                                contentDescription = null,
+                                                                imageLoader = ImageLoader.Builder(
+                                                                    context
+                                                                )
+                                                                    .components {
+                                                                        add(
+                                                                            OkHttpNetworkFetcherFactory(
+                                                                                createUnsafeOkHttpClient()
+                                                                            )
+                                                                        )
+                                                                    }
+                                                                    .build(),
+                                                                contentScale = ContentScale.FillBounds,
+                                                                modifier = Modifier
+                                                                    .size((windowInfo.containerSize.width / 17).dp)
+                                                                    .clip(RoundedCornerShape(16.dp))
+                                                            )
+                                                        }
+                                                        Text(
+                                                            text = f.name,
+                                                            fontWeight = FontWeight.W500,
+                                                            modifier = Modifier.width((windowInfo.containerSize.width / 18).dp),
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            textAlign = TextAlign.Center,
+                                                            style = MaterialTheme.typography.titleLarge
+                                                        )
+                                                        Text(
+                                                            friendsLocations[i],
+                                                            textAlign = TextAlign.Center,
+                                                            color = MaterialTheme.colorScheme.onBackground.copy(
+                                                                0.75f
+                                                            ),
+                                                            modifier = Modifier.weight(1f)
                                                         )
                                                     }
-                                                    Text(
-                                                        text = f.name,
-                                                        fontWeight = FontWeight.W500,
-                                                        modifier = Modifier.width((windowInfo.containerSize.width / 18).dp),
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        textAlign = TextAlign.Center,
-                                                        style = MaterialTheme.typography.titleLarge
-                                                    )
-                                                    Text(
-                                                        friendsLocations[i],
-                                                        textAlign = TextAlign.Center,
-                                                        color = MaterialTheme.colorScheme.onBackground.copy(
-                                                            0.75f
-                                                        ),
-                                                        modifier = Modifier.weight(1f)
-                                                    )
+                                                    if (i != userData.friends.size - 1) {
+                                                        HorizontalDivider(thickness = 2.dp)
+                                                    }
+                                                    Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                                                 }
-                                                if (i != userData.friends.size - 1) {
-                                                    HorizontalDivider(thickness = 2.dp)
-                                                }
-                                                Spacer(Modifier.height(paddingValues.calculateBottomPadding()))
                                             }
                                         }
                                     }
-                                }
-                            } else {
-                                Text(
-                                    "${userData.name} ${cnt[6]}",
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center,
-                                    fontWeight = FontWeight.W600
-                                )
-                            }
-                        }
-                        item {
-                            Text(
-                                cnt[2],
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                                modifier = Modifier.padding(16.dp),
-                                fontWeight = FontWeight.W500
-                            )
-                        }
-                        items(settings) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        when (it) {
-                                            settings[1] -> {
-                                                navController.navigate(Route.Login.route)
-                                                apiViewModel.setRoute(Route.Login.route)
-                                            }
-
-                                            settings[2] -> isDeleteAccount = true
-                                            else -> if (userLang == "en") apiViewModel.setUserLang("ru") else apiViewModel.setUserLang(
-                                                "en"
-                                            )
-                                        }
-                                    }
-                            ) {
-                                val color =
-                                    if (it == settings[0]) MaterialTheme.colorScheme.onBackground.copy(
-                                        0.75f
-                                    ) else MaterialTheme.colorScheme.error.copy(0.75f)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Icon(
-                                        imageVector =
-                                            when (it) {
-                                                settings[1] -> Icons.AutoMirrored.Rounded.ExitToApp
-                                                settings[2] -> Icons.Rounded.Delete
-                                                else -> ImageVector.vectorResource(R.drawable.language)
-                                            },
-                                        contentDescription = null,
-                                        tint = color
-                                    )
-                                    Text(
-                                        if (it == settings[0]) "${it}: $userLang" else it,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = color
-                                    )
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                        contentDescription = null,
-                                        tint = color
-                                    )
-                                }
-                                if (it != settings[2]) HorizontalDivider(color = color)
-                            }
-                        }
-                        item {
-                            Spacer(Modifier.height(20.dp))
-                        }
-                    }
-                    if (isDeleteAccount) {
-                        AlertDialog(
-                            onDismissRequest = {
-                                isDeleteAccount = false
-                            },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        isDeleteAccount = false
-                                        navController.navigate(Route.Login.route)
-                                        apiViewModel.deleteAccount()
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        MaterialTheme.colorScheme.error
-                                    )
-                                ) {
-                                    Text(
-                                        cnt[4]
-                                    )
-                                }
-                            },
-                            dismissButton = {
-                                Button(
-                                    onClick = { isDeleteAccount = false }
-                                ) {
-                                    Text(
-                                        cnt[5]
-                                    )
-                                }
-                            },
-                            title = {
-                                Text(cnt[3])
-                            },
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        Spacer(Modifier.height(0.dp))
-                        Text(
-                            text = cnt[12],
-                            style = MaterialTheme.typography.displayMedium
-                        )
-                        Spacer(Modifier.height(0.dp))
-                        OutlinedTextField(
-                            value = loginField,
-                            onValueChange = { loginField = it },
-                            keyboardActions = KeyboardActions(
-                                onDone = { focusManager.clearFocus() }
-                            ),
-                            singleLine = true,
-                            shape = RoundedCornerShape(20.dp),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    cnt[8],
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                            }
-                        )
-                        OutlinedTextField(
-                            value = passwordField,
-                            onValueChange = { passwordField = it },
-                            visualTransformation = if (isShow) VisualTransformation.None else PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions.Default.copy(
-                                keyboardType = KeyboardType.Password,
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = { focusManager.clearFocus() }
-                            ),
-                            singleLine = true,
-                            shape = RoundedCornerShape(20.dp),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    cnt[9],
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = { isShow = !isShow }
-                                ) {
-                                    Icon(
-                                        imageVector = if (!isShow) ImageVector.vectorResource(R.drawable.visibility) else ImageVector.vectorResource(
-                                            R.drawable.visibility_off
-                                        ),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground
-                                    )
-                                }
-                            }
-                        )
-                        OutlinedTextField(
-                            value = aboutField,
-                            onValueChange = { aboutField = it },
-                            keyboardActions = KeyboardActions(
-                                onDone = { focusManager.clearFocus() }
-                            ),
-                            singleLine = true,
-                            shape = RoundedCornerShape(20.dp),
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
-                            },
-                            placeholder = {
-                                Text(
-                                    cnt[10],
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                            }
-                        )
-                        Card(
-                            shape = RoundedCornerShape(20.dp),
-                            modifier =
-                                Modifier
-                                    .clickable {
-                                        if (avatarField != null) {
-                                            isChange = true
-                                        } else {
-                                            photoPicker.launch(
-                                                PickVisualMediaRequest(
-                                                    ActivityResultContracts.PickVisualMedia.ImageOnly
-                                                )
-                                            )
-                                        }
-                                    }
-                                    .padding(horizontal = 20.dp),
-                            border = BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.onBackground
-                            ),
-                            colors = CardDefaults.cardColors(Color.Transparent)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(R.drawable.photo),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
-                                Box(Modifier.width(16.dp))
-                                Text(
-                                    cnt[11],
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    fontWeight = FontWeight.W400,
-                                    fontSize = 18.sp
-                                )
-                                if (avatarField != null) {
-                                    Box(Modifier.weight(1f))
-                                    Icon(
-                                        imageVector = Icons.Rounded.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground
-                                    )
                                 } else {
-                                    Box(Modifier.weight(1f))
+                                    Text(
+                                        "${userData.name} ${cnt[6]}",
+                                        style = MaterialTheme.typography.headlineLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center,
+                                        fontWeight = FontWeight.W600
+                                    )
                                 }
                             }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                focusManager.clearFocus()
-                                apiViewModel.updateUser(
-                                    UpdateUser(
-                                        loginField.ifBlank { null },
-                                        passwordField.ifBlank { null },
-                                        aboutField.ifBlank { null },
-                                        avatarField,
-                                        avatarExt = extField.ifBlank { null },
-                                    )
+                            item {
+                                Text(
+                                    cnt[2],
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
+                                    modifier = Modifier.padding(16.dp),
+                                    fontWeight = FontWeight.W500
                                 )
-                                loginField = ""
-                                passwordField = ""
-                                aboutField = ""
-                                avatarField = null
-                                extField = ""
-                            },
-                            enabled = (loginField.isNotBlank() || passwordField.isNotBlank() || aboutField.isNotBlank() || avatarField != null) && apiState !is ApiState.Loading,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
-                        ) {
-                            Text(
-                                cnt[7],
-                                style = MaterialTheme.typography.headlineMedium
+                            }
+                            items(settings) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            when (it) {
+                                                settings[1] -> {
+                                                    navController.navigate(Route.Login.route)
+                                                    apiViewModel.setRoute(Route.Login.route)
+                                                }
+
+                                                settings[2] -> isDeleteAccount = true
+                                                else -> if (userLang == "en") apiViewModel.setUserLang("ru") else apiViewModel.setUserLang(
+                                                    "en"
+                                                )
+                                            }
+                                        }
+                                ) {
+                                    val color =
+                                        if (it == settings[0]) MaterialTheme.colorScheme.onBackground.copy(
+                                            0.75f
+                                        ) else MaterialTheme.colorScheme.error.copy(0.75f)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Icon(
+                                            imageVector =
+                                                when (it) {
+                                                    settings[1] -> Icons.AutoMirrored.Rounded.ExitToApp
+                                                    settings[2] -> Icons.Rounded.Delete
+                                                    else -> ImageVector.vectorResource(R.drawable.language)
+                                                },
+                                            contentDescription = null,
+                                            tint = color
+                                        )
+                                        Text(
+                                            if (it == settings[0]) "${it}: $userLang" else it,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = color
+                                        )
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                            contentDescription = null,
+                                            tint = color
+                                        )
+                                    }
+                                    if (it != settings[2]) HorizontalDivider(color = color)
+                                }
+                            }
+                            item {
+                                Spacer(Modifier.height(20.dp))
+                            }
+                        }
+                        if (isDeleteAccount) {
+                            AlertDialog(
+                                onDismissRequest = {
+                                    isDeleteAccount = false
+                                },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            isDeleteAccount = false
+                                            navController.navigate(Route.Login.route)
+                                            apiViewModel.deleteAccount()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Text(
+                                            cnt[4]
+                                        )
+                                    }
+                                },
+                                dismissButton = {
+                                    Button(
+                                        onClick = { isDeleteAccount = false }
+                                    ) {
+                                        Text(
+                                            cnt[5]
+                                        )
+                                    }
+                                },
+                                title = {
+                                    Text(cnt[3])
+                                },
+                                modifier = Modifier.padding(16.dp)
                             )
+                        }
+
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            Spacer(Modifier.height(0.dp))
+                            Text(
+                                text = cnt[12],
+                                style = MaterialTheme.typography.displayMedium
+                            )
+                            Spacer(Modifier.height(0.dp))
+                            OutlinedTextField(
+                                value = loginField,
+                                onValueChange = { loginField = it },
+                                keyboardActions = KeyboardActions(
+                                    onDone = { focusManager.clearFocus() }
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(20.dp),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        cnt[8],
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            )
+                            OutlinedTextField(
+                                value = passwordField,
+                                onValueChange = { passwordField = it },
+                                visualTransformation = if (isShow) VisualTransformation.None else PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions.Default.copy(
+                                    keyboardType = KeyboardType.Password,
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { focusManager.clearFocus() }
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(20.dp),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        cnt[9],
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                },
+                                trailingIcon = {
+                                    IconButton(
+                                        onClick = { isShow = !isShow }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (!isShow) ImageVector.vectorResource(R.drawable.visibility) else ImageVector.vectorResource(
+                                                R.drawable.visibility_off
+                                            ),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                        )
+                                    }
+                                }
+                            )
+                            OutlinedTextField(
+                                value = aboutField,
+                                onValueChange = { aboutField = it },
+                                keyboardActions = KeyboardActions(
+                                    onDone = { focusManager.clearFocus() }
+                                ),
+                                singleLine = true,
+                                shape = RoundedCornerShape(20.dp),
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                },
+                                placeholder = {
+                                    Text(
+                                        cnt[10],
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            )
+                            Card(
+                                shape = RoundedCornerShape(20.dp),
+                                modifier =
+                                    Modifier
+                                        .clickable {
+                                            if (avatarField != null) {
+                                                isChange = true
+                                            } else {
+                                                photoPicker.launch(
+                                                    PickVisualMediaRequest(
+                                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        .padding(horizontal = 20.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.onBackground
+                                ),
+                                colors = CardDefaults.cardColors(Color.Transparent)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.photo),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    Box(Modifier.width(16.dp))
+                                    Text(
+                                        cnt[11],
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        fontWeight = FontWeight.W400,
+                                        fontSize = 18.sp
+                                    )
+                                    if (avatarField != null) {
+                                        Box(Modifier.weight(1f))
+                                        Icon(
+                                            imageVector = Icons.Rounded.CheckCircle,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                        )
+                                    } else {
+                                        Box(Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    apiViewModel.updateUser(
+                                        UpdateUser(
+                                            loginField.ifBlank { null },
+                                            passwordField.ifBlank { null },
+                                            aboutField.ifBlank { null },
+                                            avatarField,
+                                            avatarExt = extField.ifBlank { null },
+                                        )
+                                    )
+                                    loginField = ""
+                                    passwordField = ""
+                                    aboutField = ""
+                                    avatarField = null
+                                    extField = ""
+                                },
+                                enabled = (loginField.isNotBlank() || passwordField.isNotBlank() || aboutField.isNotBlank() || avatarField != null) && apiState !is ApiState.Loading,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                            ) {
+                                Text(
+                                    cnt[7],
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
+                            }
                         }
                     }
                 }

@@ -1,11 +1,18 @@
 package org.app.glimpse.pressentation.components
 
+import android.location.Address
+import android.location.Geocoder
+import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -18,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -25,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,17 +42,26 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import org.app.glimpse.R
+import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
+import org.app.glimpse.data.network.User
 import org.app.glimpse.data.network.Users
+import java.util.Locale
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 @Composable
 fun FriendAdd(
     apiViewModel: ApiViewModel,
@@ -53,12 +71,21 @@ fun FriendAdd(
     val searched = remember { mutableStateListOf<Users>() }
     val cnt = stringArrayResource(R.array.main_cnt)
     val windowInfo = LocalWindowInfo.current
+    val apiState by apiViewModel.userData.collectAsState()
+    val userData = (apiState as ApiState.Success).data as User
+
     LaunchedEffect(Unit) {
         apiViewModel.getUserNames()
     }
     LaunchedEffect(searchText) {
+        searched.clear()
         apiViewModel.userNames.forEach {
-            if(searchText.lowercase().trim().contains(it.name.lowercase().trim())){
+            if(
+                searchText.isNotBlank() &&
+                it.name.lowercase().trim().contains(searchText.lowercase().trim())
+                && userData.id != it.id
+                && userData.friends.find { fu -> fu.id == it.id } == null
+            ) {
                 searched.add(it)
             }
         }
@@ -79,7 +106,6 @@ fun FriendAdd(
                     MaterialTheme.colorScheme.surfaceContainerHigh,
                     MaterialTheme.colorScheme.onBackground
                 ),
-//                modifier = Modifier.size(24.dp)
                 modifier = Modifier.size((windowInfo.containerSize.width / 26).dp)
             ) {
                 Icon(
@@ -120,9 +146,18 @@ fun FriendAdd(
             )
         }
         if(searched.isNotEmpty()) {
-            LazyColumn {
+            Spacer(Modifier.height(24.dp))
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 items(searched) {
-
+                    if(userData.friends.find { fu -> fu.id == it.id } == null) {
+                        FriendCard(
+                            it,
+                            it != searched.last(),
+                            apiViewModel
+                        )
+                    }
                 }
             }
         } else {
@@ -135,5 +170,63 @@ fun FriendAdd(
                 color = MaterialTheme.colorScheme.onBackground.copy(0.5f)
             )
         }
+    }
+}
+
+@Composable
+fun FriendCard(
+    f: Users,
+    isDiv: Boolean,
+    apiViewModel: ApiViewModel
+){
+    val context = LocalContext.current
+    val geocoder = Geocoder(context, Locale.getDefault())
+    var friendLocation by rememberSaveable { mutableStateOf("") }
+    val windowInfo = LocalWindowInfo.current
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            geocoder.getFromLocation(f.latitude,f.longitude,1, object: Geocoder.GeocodeListener {
+                override fun onGeocode(list: List<Address?>) {
+                    val it = list[0]
+                    friendLocation = it?.thoroughfare ?: it?.subLocality ?: it?.locality ?: it?.subAdminArea ?: it?.adminArea ?: it?.countryName ?: "Mars"
+                }
+
+                override fun onError(errorMessage: String?) {
+                    super.onError(errorMessage)
+                    Log.e("GEOCODER", errorMessage ?: "")
+                }
+            })
+        }
+    }
+    Column (
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .width(windowInfo.containerSize.width.dp).height(100.dp)
+                .clickable { apiViewModel.addFriend(f.id) },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy((windowInfo.containerSize.width/80).dp)
+        ){
+            AsyncImage(
+                model = f.avatar,
+                contentDescription = f.name,
+                modifier = Modifier.clip(RoundedCornerShape(24.dp)),
+                contentScale = ContentScale.Fit
+            )
+            Text(
+                text = f.name,
+                fontWeight = FontWeight.W600,
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                text = friendLocation,
+                color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
+                fontWeight = FontWeight.W500
+            )
+        }
+        if(isDiv) HorizontalDivider()
     }
 }

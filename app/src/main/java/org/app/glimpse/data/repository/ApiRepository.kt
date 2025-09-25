@@ -49,6 +49,14 @@ interface ApiRepo {
     suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
     suspend fun deleteAccount(token: String)
     suspend fun getUserNames(): List<Users>
+    suspend fun addFriend(
+        id: Long,
+        token: String
+    )
+    suspend fun deleteFriend(
+        id: Long,
+        token: String
+    )
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
@@ -196,5 +204,20 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
 
     override suspend fun getUserNames(): List<Users> {
         return httpClient.get("https://$host:8080/users").body()
+    }
+
+    override suspend fun addFriend(
+        id: Long,
+        token: String
+    ) {
+        httpClient.get("https://$host:8080/api/friends/$id"){
+            header("Authorization", "Bearer $token")
+        }
+    }
+
+    override suspend fun deleteFriend(id: Long, token: String) {
+        httpClient.delete("https://$host:8080/api/friends/$id") {
+            header("Authorization", "Bearer $token")
+        }
     }
 }
