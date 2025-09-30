@@ -3,6 +3,7 @@ package org.app.glimpse.data.repository
 import android.graphics.Bitmap
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.delete
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -20,9 +21,8 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.InternalAPI
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
-import io.ktor.websocket.send
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import org.app.glimpse.Message
 import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.GeocoderResponse
@@ -32,7 +32,6 @@ import org.app.glimpse.data.network.User
 import org.app.glimpse.data.network.Users
 import java.io.ByteArrayOutputStream
 import java.util.Locale
-import java.util.Scanner
 
 interface ApiRepo {
     suspend fun getLocation(
@@ -44,7 +43,7 @@ interface ApiRepo {
     suspend fun getUserData(token: String): User
     suspend fun signIn(login: String, password: String): String
     suspend fun signUp(data: SignUpUser)
-    suspend fun startWebSocket(token: String, onReceived: (User) -> Unit, isSend: Boolean)
+    suspend fun startWebSocket(token: String, onReceived: (User) -> Unit): DefaultClientWebSocketSession
     suspend fun updateUserData(token: String, data: UpdateUser): User
     suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
     suspend fun deleteAccount(token: String)
@@ -57,11 +56,18 @@ interface ApiRepo {
         id: Long,
         token: String
     )
+    suspend fun sendMessage(
+        msg: org.app.glimpse.data.network.Message,
+        token: String,
+        receiverId: Long
+    )
+    suspend fun deleteMessage(id: Long,token: String)
+    suspend fun updateMessage(msg: Message,token: String)
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
-    val host = "10.0.2.2"
-//    val host = "192.168.1.12"
+//    val host = "10.0.2.2"
+    val host = "192.168.1.12"
 
     override suspend fun deleteAccount(token: String) {
         httpClient.delete("https://$host:8080/api/users") { header("Authorization", "Bearer $token") }
@@ -115,39 +121,6 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
             contentType(ContentType.Application.Json)
             setBody(AuthRequest(login,password))
         }.body<String>()
-    }
-
-    override suspend fun startWebSocket(
-        token: String,
-        onReceived: (User) -> Unit,
-        isSend: Boolean
-    ) {
-        httpClient.webSocket(
-            port = 8080,
-            path = "/api/ws",
-            host =  host,
-            request = { header("Authorization",token) }
-        ) {
-            while(true){
-                if(isSend){
-                    send(Scanner(System.`in`).next())
-                    for(frame in incoming) {
-                        when(frame) {
-                            is Frame.Text -> {
-                                onReceived(Json.decodeFromString(frame.readText()))
-                            }
-                            is Frame.Close -> {
-                                return@webSocket
-                            }
-                            else -> {}
-                        }
-                    }
-                } else {
-                    delay(100)
-                }
-            }
-        }
-
     }
 
     @OptIn(InternalAPI::class)
@@ -219,5 +192,54 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         httpClient.delete("https://$host:8080/api/friends/$id") {
             header("Authorization", "Bearer $token")
         }
+    }
+
+    override suspend fun deleteMessage(id: Long, token: String) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun sendMessage(
+        msg: org.app.glimpse.data.network.Message,
+        token: String,
+        receiverId: Long
+    ) {
+        httpClient.post("https://$host:8080/api/messages/sent/$receiverId") {
+            setBody(msg)
+            header("Authorization", "Bearer $token")
+            header("Content-Type","application/json")
+        }
+    }
+
+    override suspend fun updateMessage(msg: Message, token: String) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun startWebSocket(
+        token: String,
+        onReceived: (User) -> Unit
+    ): DefaultClientWebSocketSession {
+        var result: DefaultClientWebSocketSession? = null
+        httpClient.webSocket(
+            urlString = "wss://$host:8080/api/ws",
+            request = { header("Authorization","Bearer $token") }
+        ) {
+            result = this
+            while(true){
+                for(frame in incoming) {
+                    when(frame) {
+                        is Frame.Text -> {
+                            if(frame.readText()[0] == '{'){
+                                onReceived(Json.decodeFromString(frame.readText()))
+                            }
+                        }
+                        is Frame.Close -> {
+                            return@webSocket
+                        }
+                        else -> {}
+                    }
+                }
+            }
+        }
+        return result!!
     }
 }

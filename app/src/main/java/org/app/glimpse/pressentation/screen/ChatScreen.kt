@@ -54,9 +54,6 @@ import androidx.navigation.NavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toLocalDateTime
 import org.app.glimpse.R
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
@@ -64,8 +61,10 @@ import org.app.glimpse.data.network.Message
 import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.createUnsafeOkHttpClient
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import kotlin.time.ExperimentalTime
 
 @Composable
@@ -79,10 +78,11 @@ fun ChatScreen(
     val context = LocalContext.current
     if(apiState is ApiState.Success) {
         val userData = (apiState as ApiState.Success).data as User
-        val rawMessages = (userData.sentMessages.filter { it.receivedId == friendId } + userData.receivedMessages.filter { it.senderId == friendId }).sortedBy { it.createdAt }
+//        val rawMessages = (userData.sentMessages.filter { it.receivedId == friendId } + userData.receivedMessages.filter { it.senderId == friendId }).sortedBy { it.createdAt }
+        val rawMessages = (userData.sentMessages+userData.receivedMessages).sortedBy { it.createdAt }
         val windowInfo = LocalWindowInfo.current
         val data = userData.friends.find { it.id == friendId }
-        val time = data?.lastOnline?.toLocalDateTime(TimeZone.currentSystemDefault())?.toJavaLocalDateTime()
+        val time = LocalDateTime.ofInstant(Instant.ofEpochMilli(data?.lastOnline ?: kotlin.time.Clock.System.now().toEpochMilliseconds()),ZoneId.systemDefault())
         val timeDiff = Duration.between(time, LocalDateTime.now())
         val cnt = stringArrayResource(R.array.chat_cnt)
         val lastOnline =
@@ -156,7 +156,9 @@ fun ChatScreen(
                 }
             }
 
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            ) {
                 items(messages.toList()) { (date, messages) ->
                     Text(
                         date,
@@ -165,6 +167,8 @@ fun ChatScreen(
                         color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
                     )
                     messages.forEach {
+                        val createdAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(it.createdAt),ZoneId.systemDefault())
+                        val updatedAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(it.updatedAt),ZoneId.systemDefault())
                         if (it.senderId == userData.id) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -193,15 +197,14 @@ fun ChatScreen(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             Text(
-                                                "${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).hour}:${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).minute}",
+                                                "${createdAt.hour}:${createdAt.minute}",
                                                 color = MaterialTheme.colorScheme.onBackground.copy(
                                                     0.5f
                                                 ),
                                                 style = MaterialTheme.typography.labelLarge
                                             )
                                             Icon(
-                                                imageVector =
-                                                    if (it.isChecked) ImageVector.vectorResource(R.drawable.done_all) else Icons.Rounded.Check,
+                                                imageVector = if (it.isChecked) ImageVector.vectorResource(R.drawable.done_all) else Icons.Rounded.Check,
                                                 contentDescription = "isChecked",
                                                 tint = MaterialTheme.colorScheme.primary
                                             )
@@ -233,7 +236,7 @@ fun ChatScreen(
                                     ) {
                                         Text(it.content)
                                         Text(
-                                            "${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).hour}:${it.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).minute}",
+                                            "${createdAt.hour}:${createdAt.minute}",
                                             color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
                                             style = MaterialTheme.typography.labelLarge
                                         )
@@ -264,7 +267,13 @@ fun ChatScreen(
                     visible = chatMessage.trim().isNotBlank(),
                 ) {
                     Button(
-                        onClick = { chatMessage = "" },
+                        onClick = {
+                            apiViewModel.sendMessage(
+                                Message(content = chatMessage),
+                                friendId
+                            )
+                            chatMessage = ""
+                        },
                         shape = CircleShape,
                         contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -287,7 +296,7 @@ fun ChatScreen(
 fun groupingMessages(data: List<Message>): Map<String,List<Message>> {
     val resultMap: MutableMap<String,List<Message>> = mutableMapOf()
     data.forEach { f ->
-        val it = f.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
+        val it = LocalDateTime.ofInstant(Instant.ofEpochMilli(f.createdAt), ZoneId.systemDefault())
         when {
             it.dayOfMonth == OffsetDateTime.now().dayOfMonth -> {
                 val list = resultMap["Today"]?.toMutableList()

@@ -6,12 +6,14 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.ktor.websocket.DefaultWebSocketSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.app.glimpse.FriendData
 import org.app.glimpse.Route
 import org.app.glimpse.UserData
 import org.app.glimpse.data.repository.ApiRepository
@@ -19,7 +21,6 @@ import org.app.glimpse.data.repository.UserDataRepository
 import org.app.glimpse.data.repository.UserPreferencesRepository
 import java.util.Locale
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 sealed interface ApiState {
     object Initial: ApiState
@@ -36,6 +37,7 @@ class ApiViewModel(
 
     private val _geocoderState = MutableStateFlow<ApiState>(ApiState.Loading)
     val geocoderState = _geocoderState.asStateFlow()
+    var webSocketCnn: DefaultWebSocketSession? = null
 
     fun getLocation(
         longitude: Double,
@@ -127,18 +129,18 @@ class ApiViewModel(
         viewModelScope.launch {
             try {
                 val user = you.value
-                val friendFriends = mutableListOf<org.app.glimpse.FriendData>()
+                val friendFriends = mutableListOf<FriendData>()
                 apiRepository.getFriendFriends(id).forEach { data ->
                     friendFriends.add(
-                        org.app.glimpse.FriendData.newBuilder()
+                        FriendData.newBuilder()
                             .setId(data.id)
                             .setName(data.name)
                             .setBio(data.bio)
                             .setAvatar(data.avatar)
                             .setLatitude(data.latitude)
                             .setLongitude(data.longitude)
-                            .setCreatedAt(data.createdAt.toEpochMilliseconds())
-                            .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                            .setCreatedAt(data.createdAt)
+                            .setUpdatedAt(data.updatedAt)
                             .build()
                     )
                 }
@@ -218,8 +220,8 @@ class ApiViewModel(
                         latitude = friendFriends.latitude,
                         longitude = friendFriends.longitude,
                         friends = null,
-                        createdAt = Instant.fromEpochMilliseconds(friendFriends.createdAt),
-                        updatedAt = Instant.fromEpochMilliseconds(friendFriends.updatedAt)
+                        createdAt = friendFriends.createdAt,
+                        updatedAt = friendFriends.updatedAt
                     )
                 )
             }
@@ -231,10 +233,10 @@ class ApiViewModel(
                     bio = friend.bio,
                     latitude = friend.latitude,
                     longitude = friend.longitude,
-                    lastOnline = Instant.fromEpochMilliseconds(friend.lastOnline),
+                    lastOnline = friend.lastOnline,
                     friends = friendsFriend,
-                    createdAt = Instant.fromEpochMilliseconds(friend.createdAt),
-                    updatedAt = Instant.fromEpochMilliseconds(friend.updatedAt)
+                    createdAt = friend.createdAt,
+                    updatedAt = friend.updatedAt
                 )
             )
         }
@@ -247,8 +249,8 @@ class ApiViewModel(
                     isChecked = msg.isChecked,
                     senderId = msg.senderId,
                     receivedId = msg.receivedId,
-                    createdAt = Instant.fromEpochMilliseconds(msg.createdAt),
-                    updatedAt = Instant.fromEpochMilliseconds(msg.updatedAt)
+                    createdAt = msg.createdAt,
+                    updatedAt = msg.updatedAt
                 )
             )
         }
@@ -261,8 +263,8 @@ class ApiViewModel(
                     isChecked = msg.isChecked,
                     senderId = msg.senderId,
                     receivedId = msg.receivedId,
-                    createdAt = Instant.fromEpochMilliseconds(msg.createdAt),
-                    updatedAt = Instant.fromEpochMilliseconds(msg.updatedAt)
+                    createdAt = msg.createdAt,
+                    updatedAt = msg.updatedAt
                 )
             )
         }
@@ -278,8 +280,8 @@ class ApiViewModel(
                 friends = friends,
                 sentMessages = sentMessages,
                 receivedMessages = receivedMessages,
-                createdAt = Instant.fromEpochMilliseconds(data.createdAt),
-                updatedAt = Instant.fromEpochMilliseconds(data.updatedAt)
+                createdAt = data.createdAt,
+                updatedAt = data.updatedAt
             )
         )
 
@@ -352,6 +354,43 @@ class ApiViewModel(
                 _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
+            }
+        }
+    }
+
+    fun startWebSocket(){
+        viewModelScope.launch {
+            webSocketCnn = apiRepository.startWebSocket(
+                token.value
+            ) {
+                viewModelScope.launch {
+                    userDataRepository.setUserDataNet(it)
+                    _userData.value = ApiState.Success(it)
+                }
+            }
+        }
+    }
+
+    fun sendMessage(
+        msg: Message,
+        receiverId: Long
+    ){
+//        if(webSocketCnn == null) {
+//            startWebSocket()
+//        }
+        viewModelScope.launch {
+//            while(webSocketCnn == null){
+//                delay(100)
+//            }
+            try {
+                apiRepository.sendMessage(
+                    msg = msg,
+                    token = token.value,
+                    receiverId = receiverId
+                )
+//                webSocketCnn!!.send(Frame.Text(""))
+            } catch (e: Exception) {
+                Log.e("msg", e.localizedMessage ?: "")
             }
         }
     }

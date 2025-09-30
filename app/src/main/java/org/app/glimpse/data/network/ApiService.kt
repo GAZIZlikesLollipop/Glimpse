@@ -17,17 +17,16 @@ import kotlin.time.ExperimentalTime
 object ApiService {
     @OptIn(ExperimentalTime::class)
     val httpClient = HttpClient(CIO){
-        install(WebSockets)
+        install(WebSockets) {
+            pingIntervalMillis = 1000L
+        }
         install(ContentNegotiation){
             json(
                 Json {
                     prettyPrint = true
                     isLenient = true
                     ignoreUnknownKeys = true
-                    serializersModule = SerializersModule {
-                        contextual(InstantSerialize)
-                        contextual(BitmapSerialize)
-                    }
+                    serializersModule = SerializersModule { contextual(BitmapSerialize) }
                 }
             )
         }

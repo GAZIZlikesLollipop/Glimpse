@@ -16,17 +16,16 @@ import kotlinx.serialization.encoding.Encoder
 import java.io.ByteArrayOutputStream
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 @Serializable
 data class Message(
-    val id: Long,
+    val id: Long = 0,
     val content: String,
     val isChecked: Boolean = false,
     val senderId: Long? = null,
     val receivedId: Long? = null,
-    @SerialName("created_at") @Serializable(InstantSerialize::class) val createdAt: Instant = Clock.System.now(),
-    @SerialName("updated_at") @Serializable(InstantSerialize::class) val updatedAt: Instant = Clock.System.now()
+    @SerialName("created_at")val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
+    @SerialName("updated_at")val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
 )
 
 @Serializable
@@ -41,8 +40,8 @@ data class User(
     val friends: List<FriendUser>,
     val sentMessages: List<Message>,
     val receivedMessages: List<Message>,
-    @SerialName("created_at") @Serializable(InstantSerialize::class) val createdAt: Instant = Clock.System.now(),
-    @SerialName("updated_at") @Serializable(InstantSerialize::class) val updatedAt: Instant = Clock.System.now()
+    @SerialName("created_at")val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
+    @SerialName("updated_at")val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
 )
 
 @Serializable
@@ -53,10 +52,10 @@ data class FriendUser(
     val bio: String,
     val latitude: Double,
     val longitude: Double,
-    @Serializable(InstantSerialize::class) val lastOnline: Instant = Clock.System.now(),
+    val lastOnline: Long = Clock.System.now().toEpochMilliseconds(),
     val friends: List<FriendUser>? = null,
-    @SerialName("created_at") @Serializable(InstantSerialize::class) val createdAt: Instant = Clock.System.now(),
-    @SerialName("updated_at") @Serializable(InstantSerialize::class) val updatedAt: Instant = Clock.System.now()
+    @SerialName("created_at") val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
+    @SerialName("updated_at") val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
 )
 
 @Serializable
@@ -106,19 +105,6 @@ data class AuthRequest(
     val password: String
 )
 
-object InstantSerialize: KSerializer<Instant> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("MyCustomType", PrimitiveKind.STRING)
-    override fun serialize(
-        encoder: Encoder,
-        value: Instant
-    ) {
-        encoder.encodeString(value.toString())
-    }
-
-    override fun deserialize(decoder: Decoder): Instant {
-        return Instant.parse(decoder.decodeString())
-    }
-}
 object BitmapSerialize: KSerializer<Bitmap> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Bitmap", PrimitiveKind.STRING)
     override fun serialize(

@@ -97,9 +97,6 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.valentinilk.shimmer.shimmer
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toLocalDateTime
 import org.app.glimpse.R
 import org.app.glimpse.Route
 import org.app.glimpse.data.network.ApiState
@@ -108,6 +105,9 @@ import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.UpdateUser
 import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.createUnsafeOkHttpClient
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.time.ExperimentalTime
@@ -333,7 +333,7 @@ fun ProfileScreen(
                                             modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
                                                 .clip(RoundedCornerShape(20.dp)),
                                         )
-                                        if (userData.createdAt != userData.updatedAt && userData.createdAt.toEpochMilliseconds() != userData.updatedAt.toEpochMilliseconds()) {
+                                        if (userData.createdAt != userData.updatedAt) {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.End,
@@ -351,8 +351,9 @@ fun ProfileScreen(
                                                 )
                                                 Spacer(Modifier.width(8.dp))
                                                 Text(
-                                                    text = userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
-                                                        .toJavaLocalDateTime().format(
+                                                    text = LocalDateTime
+                                                        .ofInstant(Instant.ofEpochMilli(userData.createdAt), ZoneId.systemDefault())
+                                                        .format(
                                                             DateTimeFormatter.ofPattern(
                                                                 "yyyy.MM.dd",
                                                                 Locale.getDefault()
@@ -360,9 +361,7 @@ fun ProfileScreen(
                                                         ),
                                                     fontWeight = FontWeight.W500,
                                                     fontSize = 16.sp,
-                                                    color = MaterialTheme.colorScheme.onBackground.copy(
-                                                        0.8f
-                                                    )
+                                                    color = MaterialTheme.colorScheme.onBackground.copy(0.8f)
                                                 )
                                             }
                                         }
@@ -381,8 +380,7 @@ fun ProfileScreen(
                                     )
                                     Text(
                                         text = "${cnt[1]} ${
-                                            userData.createdAt.toLocalDateTime(TimeZone.currentSystemDefault())
-                                                .toJavaLocalDateTime().format(
+                                            LocalDateTime.ofInstant(Instant.ofEpochMilli(userData.createdAt),ZoneId.systemDefault()).format(
                                                     DateTimeFormatter.ofPattern(
                                                         "yyyy dd MMMM",
                                                         Locale.getDefault()

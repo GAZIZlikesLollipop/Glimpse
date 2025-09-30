@@ -42,8 +42,8 @@ class UserDataRepository(context: Context): UserDataRepo {
                         .setAvatar(data.avatar)
                         .setLatitude(data.latitude)
                         .setLongitude(data.longitude)
-                        .setCreatedAt(data.createdAt.toEpochMilliseconds())
-                        .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                        .setCreatedAt(data.createdAt)
+                        .setUpdatedAt(data.updatedAt)
                         .build()
                 )
             }
@@ -57,8 +57,8 @@ class UserDataRepository(context: Context): UserDataRepo {
                     .setLatitude(data.latitude)
                     .setLongitude(data.longitude)
                     .addAllFriends(friendsFriend)
-                    .setCreatedAt(data.createdAt.toEpochMilliseconds())
-                    .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                    .setCreatedAt(data.createdAt)
+                    .setUpdatedAt(data.updatedAt)
                     .build()
             )
         }
@@ -71,8 +71,8 @@ class UserDataRepository(context: Context): UserDataRepo {
                     .setIsChecked(msg.isChecked)
                     .setSenderId(msg.senderId ?: 0)
                     .setReceivedId(msg.receivedId ?: 0)
-                    .setCreatedAt(msg.createdAt.toEpochMilliseconds())
-                    .setUpdatedAt(msg.updatedAt.toEpochMilliseconds())
+                    .setCreatedAt(msg.createdAt)
+                    .setUpdatedAt(msg.updatedAt)
                     .build()
             )
         }
@@ -85,8 +85,8 @@ class UserDataRepository(context: Context): UserDataRepo {
                     .setIsChecked(msg.isChecked)
                     .setSenderId(msg.senderId ?: 0)
                     .setReceivedId(msg.receivedId ?: 0)
-                    .setCreatedAt(msg.createdAt.toEpochMilliseconds())
-                    .setUpdatedAt(msg.updatedAt.toEpochMilliseconds())
+                    .setCreatedAt(msg.createdAt)
+                    .setUpdatedAt(msg.updatedAt)
                     .build()
             )
         }
@@ -102,8 +102,8 @@ class UserDataRepository(context: Context): UserDataRepo {
                 .addAllFriends(friends)
                 .addAllSentMessages(sentMessages)
                 .addAllReceivedMessages(receivedMessages)
-                .setCreatedAt(data.createdAt.toEpochMilliseconds())
-                .setUpdatedAt(data.updatedAt.toEpochMilliseconds())
+                .setCreatedAt(data.createdAt)
+                .setUpdatedAt(data.updatedAt)
                 .build()
         }
     }
