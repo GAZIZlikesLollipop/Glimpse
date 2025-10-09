@@ -21,9 +21,8 @@ import kotlin.time.ExperimentalTime
 data class Message(
     val id: Long = 0,
     val content: String,
-    val isChecked: Boolean = false,
     val senderId: Long? = null,
-    val receivedId: Long? = null,
+    val receiverId: Long? = null,
     @SerialName("created_at")val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
     @SerialName("updated_at")val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
 )

@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.ktor.websocket.DefaultWebSocketSession
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -246,9 +248,8 @@ class ApiViewModel(
                 Message(
                     id = msg.id,
                     content = msg.content,
-                    isChecked = msg.isChecked,
                     senderId = msg.senderId,
-                    receivedId = msg.receivedId,
+                    receiverId = msg.receivedId,
                     createdAt = msg.createdAt,
                     updatedAt = msg.updatedAt
                 )
@@ -260,9 +261,8 @@ class ApiViewModel(
                 Message(
                     id = msg.id,
                     content = msg.content,
-                    isChecked = msg.isChecked,
                     senderId = msg.senderId,
-                    receivedId = msg.receivedId,
+                    receiverId = msg.receivedId,
                     createdAt = msg.createdAt,
                     updatedAt = msg.updatedAt
                 )
@@ -374,23 +374,56 @@ class ApiViewModel(
     fun sendMessage(
         msg: Message,
         receiverId: Long
-    ){
+    ): Deferred<Message?> {
 //        if(webSocketCnn == null) {
 //            startWebSocket()
 //        }
-        viewModelScope.launch {
+        return viewModelScope.async {
 //            while(webSocketCnn == null){
 //                delay(100)
 //            }
             try {
-                apiRepository.sendMessage(
+                val result = apiRepository.sendMessage(
                     msg = msg,
                     token = token.value,
                     receiverId = receiverId
                 )
+                val data = apiRepository.getUserData(token.value)
+                _userData.value = ApiState.Success(data)
+                userDataRepository.setUserDataNet(data)
 //                webSocketCnn!!.send(Frame.Text(""))
+                result
             } catch (e: Exception) {
                 Log.e("msg", e.localizedMessage ?: "")
+                null
+            }
+        }
+    }
+    fun deleteMessage(msgId: Long){
+        viewModelScope.launch {
+            try {
+                apiRepository.deleteMessage(msgId,token.value)
+                val data = apiRepository.getUserData(token.value)
+                _userData.value = ApiState.Success(data)
+                userDataRepository.setUserDataNet(data)
+            } catch (e: Exception) {
+                Log.e("DELETE_MSG", e.localizedMessage ?: "")
+            }
+        }
+    }
+
+    fun updateMessage(
+        id: Long,
+        content: String
+    ){
+        viewModelScope.launch {
+            try {
+               apiRepository.updateMessage(id,Message(content = content),token.value)
+                val data = apiRepository.getUserData(token.value)
+                _userData.value = ApiState.Success(data)
+                userDataRepository.setUserDataNet(data)
+            } catch (e: Exception){
+                Log.e("UPDATEMSG", e.localizedMessage ?: "")
             }
         }
     }

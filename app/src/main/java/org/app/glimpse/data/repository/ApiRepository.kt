@@ -22,10 +22,10 @@ import io.ktor.utils.io.InternalAPI
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.serialization.json.Json
-import org.app.glimpse.Message
 import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.GeocoderResponse
+import org.app.glimpse.data.network.Message
 import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.UpdateUser
 import org.app.glimpse.data.network.User
@@ -57,17 +57,24 @@ interface ApiRepo {
         token: String
     )
     suspend fun sendMessage(
-        msg: org.app.glimpse.data.network.Message,
+        msg: Message,
         token: String,
         receiverId: Long
+    ): Message
+    suspend fun deleteMessage(
+        id: Long,
+        token: String
     )
-    suspend fun deleteMessage(id: Long,token: String)
-    suspend fun updateMessage(msg: Message,token: String)
+    suspend fun updateMessage(
+        id: Long,
+        msg: Message,
+        token: String
+    )
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
-//    val host = "10.0.2.2"
-    val host = "192.168.1.12"
+    val host = "10.0.2.2"
+//    val host = "192.168.1.12"
 
     override suspend fun deleteAccount(token: String) {
         httpClient.delete("https://$host:8080/api/users") { header("Authorization", "Bearer $token") }
@@ -194,24 +201,35 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         }
     }
 
-    override suspend fun deleteMessage(id: Long, token: String) {
-        TODO("Not yet implemented")
+    override suspend fun deleteMessage(
+        id: Long,
+        token: String
+    ) {
+        httpClient.delete("https://$host:8080/api/messages/$id"){ header("Authorization", "Bearer $token") }
     }
 
     override suspend fun sendMessage(
-        msg: org.app.glimpse.data.network.Message,
+        msg: Message,
         token: String,
         receiverId: Long
-    ) {
-        httpClient.post("https://$host:8080/api/messages/sent/$receiverId") {
+    ): Message {
+        return httpClient.post("https://$host:8080/api/messages/$receiverId") {
             setBody(msg)
             header("Authorization", "Bearer $token")
             header("Content-Type","application/json")
-        }
+        }.body()
     }
 
-    override suspend fun updateMessage(msg: Message, token: String) {
-        TODO("Not yet implemented")
+    override suspend fun updateMessage(
+        id: Long,
+        msg: Message,
+        token: String
+    ) {
+        httpClient.patch("https://$host:8080/api/messages/${msg.id}"){
+            setBody(msg)
+            header("Content-Type","application/json")
+            header("Authorization", "Bearer $token")
+        }
     }
 
     override suspend fun startWebSocket(

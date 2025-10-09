@@ -6,7 +6,6 @@ option java_multiple_files = true;
 message Message {
   int64 id = 1;
   string content = 2;
-  bool isChecked = 3;
   optional int64 senderId = 4;
   optional int64 receivedId = 5;
   int64 createdAt = 6;
