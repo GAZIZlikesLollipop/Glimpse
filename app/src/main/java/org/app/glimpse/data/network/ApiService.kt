@@ -13,7 +13,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import kotlin.time.ExperimentalTime
-
+val json =
+    Json {
+        prettyPrint = true
+        isLenient = true
+        ignoreUnknownKeys = true
+        serializersModule = SerializersModule { contextual(BitmapSerialize) }
+    }
 object ApiService {
     @OptIn(ExperimentalTime::class)
     val httpClient = HttpClient(CIO){
@@ -21,14 +27,7 @@ object ApiService {
             pingIntervalMillis = 1000L
         }
         install(ContentNegotiation){
-            json(
-                Json {
-                    prettyPrint = true
-                    isLenient = true
-                    ignoreUnknownKeys = true
-                    serializersModule = SerializersModule { contextual(BitmapSerialize) }
-                }
-            )
+            json(json)
         }
         install(Logging){
             logger = object : Logger {

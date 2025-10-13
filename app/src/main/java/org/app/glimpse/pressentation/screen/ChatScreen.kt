@@ -357,7 +357,9 @@ fun ChatScreen(
                                 }
                                 focusManager.clearFocus()
                                 scope.launch {
-                                    listState.animateScrollToItem(messages.toList().last().second.lastIndex)
+                                    if (messages.isNotEmpty()) {
+                                        listState.animateScrollToItem(messages.toList().last().second.lastIndex)
+                                    }
                                 }
                             },
                             shape = CircleShape,

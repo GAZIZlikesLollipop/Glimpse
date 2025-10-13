@@ -108,6 +108,9 @@ fun MainScreen(
     val you by apiViewModel.you.collectAsState()
 
     LaunchedEffect(Unit) {
+        if(apiViewModel.webSocketCnn == null){
+            apiViewModel.startWebSocket()
+        }
         apiViewModel.getOwnData()
     }
 

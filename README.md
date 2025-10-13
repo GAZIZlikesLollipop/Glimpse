@@ -28,4 +28,4 @@ yandexApiKey="ВАШ_АПИ_КЛЮЧ"
 4. ~~Доделать profile screen (удаления аккунта, настройка приложения и измнение профиля)~~
 5. ~~Настроить map objetcs и offline maps в main screen~~ 
 6. ~~Сделать экран для добавления и поиска друзей~~
-7. Настроить до конца webSocket integration в chat screen
+7. ~~Настроить до конца webSocket integration в chat screen~~

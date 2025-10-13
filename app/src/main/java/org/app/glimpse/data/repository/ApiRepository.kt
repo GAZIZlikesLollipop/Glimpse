@@ -30,6 +30,7 @@ import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.UpdateUser
 import org.app.glimpse.data.network.User
 import org.app.glimpse.data.network.Users
+import org.app.glimpse.data.network.json
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 
@@ -43,7 +44,11 @@ interface ApiRepo {
     suspend fun getUserData(token: String): User
     suspend fun signIn(login: String, password: String): String
     suspend fun signUp(data: SignUpUser)
-    suspend fun startWebSocket(token: String, onReceived: (User) -> Unit): DefaultClientWebSocketSession
+    suspend fun startWebSocket(
+        token: String,
+        onReceived: (User) -> Unit,
+        onWebSocket: (DefaultClientWebSocketSession) -> Unit
+    )
     suspend fun updateUserData(token: String, data: UpdateUser): User
     suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
     suspend fun deleteAccount(token: String)
@@ -73,8 +78,8 @@ interface ApiRepo {
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
-    val host = "10.0.2.2"
-//    val host = "192.168.1.12"
+//    val host = "10.0.2.2"
+    val host = "192.168.1.3"
 
     override suspend fun deleteAccount(token: String) {
         httpClient.delete("https://$host:8080/api/users") { header("Authorization", "Bearer $token") }
@@ -234,20 +239,20 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
 
     override suspend fun startWebSocket(
         token: String,
-        onReceived: (User) -> Unit
-    ): DefaultClientWebSocketSession {
-        var result: DefaultClientWebSocketSession? = null
+        onReceived: (User) -> Unit,
+        onWebSocket: (DefaultClientWebSocketSession) -> Unit
+    ){
         httpClient.webSocket(
             urlString = "wss://$host:8080/api/ws",
             request = { header("Authorization","Bearer $token") }
         ) {
-            result = this
+            onWebSocket(this)
             while(true){
                 for(frame in incoming) {
                     when(frame) {
                         is Frame.Text -> {
                             if(frame.readText()[0] == '{'){
-                                onReceived(Json.decodeFromString(frame.readText()))
+                                onReceived(json.decodeFromString(frame.readText()))
                             }
                         }
                         is Frame.Close -> {
@@ -258,6 +263,5 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
                 }
             }
         }
-        return result!!
     }
 }

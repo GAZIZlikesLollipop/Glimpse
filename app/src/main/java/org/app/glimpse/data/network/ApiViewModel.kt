@@ -7,7 +7,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import io.ktor.websocket.DefaultWebSocketSession
+import io.ktor.websocket.Frame
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.app.glimpse.FriendData
 import org.app.glimpse.Route
 import org.app.glimpse.UserData
@@ -360,14 +363,18 @@ class ApiViewModel(
 
     fun startWebSocket(){
         viewModelScope.launch {
-            webSocketCnn = apiRepository.startWebSocket(
-                token.value
-            ) {
-                viewModelScope.launch {
-                    userDataRepository.setUserDataNet(it)
-                    _userData.value = ApiState.Success(it)
+            apiRepository.startWebSocket(
+                token.value,
+                {
+                    viewModelScope.launch {
+                        userDataRepository.setUserDataNet(it)
+                        _userData.value = ApiState.Success(it)
+                    }
+                },
+                {
+                    webSocketCnn = it
                 }
-            }
+            )
         }
     }
 
@@ -375,27 +382,29 @@ class ApiViewModel(
         msg: Message,
         receiverId: Long
     ): Deferred<Message?> {
-//        if(webSocketCnn == null) {
-//            startWebSocket()
-//        }
         return viewModelScope.async {
-//            while(webSocketCnn == null){
-//                delay(100)
-//            }
-            try {
-                val result = apiRepository.sendMessage(
-                    msg = msg,
-                    token = token.value,
-                    receiverId = receiverId
-                )
-                val data = apiRepository.getUserData(token.value)
-                _userData.value = ApiState.Success(data)
-                userDataRepository.setUserDataNet(data)
-//                webSocketCnn!!.send(Frame.Text(""))
-                result
-            } catch (e: Exception) {
-                Log.e("msg", e.localizedMessage ?: "")
-                null
+            withContext(Dispatchers.IO) {
+                while(webSocketCnn == null){
+                    delay(100)
+                }
+            }
+            withContext(Dispatchers.IO) {
+                try {
+                    apiRepository.updateUserData(token.value, UpdateUser())
+                    val result = apiRepository.sendMessage(
+                        msg = msg,
+                        token = token.value,
+                        receiverId = receiverId
+                    )
+                    val data = apiRepository.getUserData(token.value)
+                    _userData.value = ApiState.Success(data)
+                    userDataRepository.setUserDataNet(data)
+                    webSocketCnn!!.send(Frame.Text(""))
+                    result
+                } catch (e: Exception) {
+                    Log.e("msg", e.localizedMessage ?: "")
+                    null
+                }
             }
         }
     }
