@@ -97,21 +97,23 @@ fun MainScreen(
     apiViewModel: ApiViewModel
 ){
     val context = LocalContext.current
-    val mapView = remember { MapView(context) }
     val windowInfo = LocalWindowInfo.current
     val isDarkTheme = isSystemInDarkTheme()
-    var isChats by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cnt = stringArrayResource(R.array.main_cnt)
     var isAdd by rememberSaveable { mutableStateOf(false) }
     val apiState by apiViewModel.userData.collectAsState()
     val you by apiViewModel.you.collectAsState()
+    val mapView = remember { MapView(context) }
 
     LaunchedEffect(Unit) {
+        apiViewModel.getOwnData({
+            navController.navigate(Route.Login.route)
+            apiViewModel.setRoute(Route.Login.route)
+        })
         if(apiViewModel.webSocketCnn == null){
             apiViewModel.startWebSocket()
         }
-        apiViewModel.getOwnData()
     }
 
     LaunchedEffect(isDarkTheme) {
@@ -153,65 +155,85 @@ fun MainScreen(
         }
     }
 
-    val ct = LocalContext.current
+    val mapState by apiViewModel.mapState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        if(apiViewModel.isFirst){
+            mapView.apply {
+                mapWindow.map.move(
+                    CameraPosition(
+                        Point(you.latitude,you.longitude),
+                        18f,
+                        0f,
+                        0f
+                    ),
+                    Animation(Animation.Type.SMOOTH,2f)
+                )
+                {}
+            }
+            apiViewModel.isFirst = false
+        } else {
+            mapView.apply { mapWindow.map.move(mapState) }
+        }
+    }
+
+    LaunchedEffect(apiState) {
+        if(apiState is ApiState.Success){
+            mapView.apply {
+                val activity = context as Activity
+                val root = activity.findViewById<ViewGroup>(android.R.id.content)
+
+                val userView = ComposeView(context).apply {
+                    setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                }
+
+                val hiddenHost = FrameLayout(context).apply {
+                    translationX = -10_000f // offscreen, но прикреплён к окну
+                    (userView.parent as? ViewGroup)?.removeView(userView)
+                    addView(userView)
+                }
+
+                (hiddenHost.parent as? ViewGroup)?.removeView(hiddenHost)
+
+                root.addView(hiddenHost)
+
+                val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry =
+                    Point(you.latitude, you.longitude)
+                }
+
+                userView.doOnAttach {
+                    userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root,hiddenHost) }
+                }
+
+                for(friend in you.friendsList){
+                    val friendView = ComposeView(context).apply {
+                        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                    }
+                    val hiddenHost = FrameLayout(context).apply {
+                        translationX = -10_000f // offscreen, но прикреплён к окну
+                        (userView.parent as? ViewGroup)?.removeView(friendView)
+                        addView(friendView)
+                    }
+                    (hiddenHost.parent as? ViewGroup)?.removeView(hiddenHost)
+
+                    root.addView(hiddenHost)
+                    val friendPlacemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(friend.latitude,friend.longitude)}
+                    friendView.doOnAttach {
+                        friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,friendPlacemark,root,hiddenHost) }
+                    }
+                }
+            }
+        }
+    }
+
     Box(
         modifier = Modifier.fillMaxSize()
     ){
-        if(apiState is ApiState.Success){
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = {
-                    mapView.apply {
-                        val activity = ct as Activity
-                        val root = activity.findViewById<ViewGroup>(android.R.id.content)
-
-                        val userView = ComposeView(ct).apply {
-                            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-                        }
-
-                        val hiddenHost = FrameLayout(ct).apply {
-                            translationX = -10_000f // offscreen, но прикреплён к окну
-                            addView(userView)
-                        }
-
-                        root.addView(hiddenHost)
-
-                        val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(you.latitude,you.longitude)}
-
-                        userView.doOnAttach {
-                            userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root,hiddenHost) }
-                        }
-
-                        for(friend in you.friendsList){
-                            val friendView = ComposeView(ct).apply {
-                                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-                            }
-                            friendView.doOnAttach {
-                                friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,placemark,root,hiddenHost) }
-                            }
-                        }
-
-                        mapWindow.map.move(
-                            CameraPosition(
-                                Point(you.latitude,you.longitude),
-                                18f,
-                                0f,
-                                0f
-                            ),
-                            Animation(Animation.Type.SMOOTH,2f)
-                        )
-                        {}
-                    }
-                },
-                update = {}
-            )
-        } else {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { mapView },
-                update = {}
-            )
-        }
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { mapView },
+            update = {}
+        )
         Column(
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -250,7 +272,7 @@ fun MainScreen(
             }
 
             Button(
-                onClick = { isChats = true },
+                onClick = { apiViewModel.isChats = true },
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
                     .width((windowInfo.containerSize.width/20).dp)
@@ -290,9 +312,9 @@ fun MainScreen(
                 contentDescription = "Settings",
             )
         }
-        if(isChats) {
+        if(apiViewModel.isChats) {
             ModalBottomSheet(
-                onDismissRequest = { isChats = false },
+                onDismissRequest = { apiViewModel.isChats = false },
                 sheetState = sheetState,
                 modifier = Modifier.fillMaxSize().padding(top = paddingValues.calculateTopPadding())
             ) {
@@ -330,7 +352,7 @@ fun MainScreen(
                                                 ChatCard(
                                                     friend = it,
                                                     onLocation = {
-                                                        isChats = false
+                                                        apiViewModel.isChats = false
                                                         mapView.apply {
                                                             mapWindow.map.move(
                                                                 CameraPosition(
@@ -351,7 +373,7 @@ fun MainScreen(
                                                         }
                                                     },
                                                     onChat = {
-                                                        isChats = false
+                                                        apiViewModel.isChats = false
                                                         navController.navigate(
                                                             Route.Chat.createRoute(
                                                                 it.id
@@ -359,7 +381,7 @@ fun MainScreen(
                                                         )
                                                     },
                                                     onProfile = {
-                                                        isChats = false
+                                                        apiViewModel.isChats = false
                                                         navController.navigate(
                                                             Route.Profile.createRoute(
                                                                 it.id
@@ -473,9 +495,11 @@ fun MainScreen(
             }
         }
     }
-
-    DisposableEffect(mapView) {
+    DisposableEffect(Unit) {
         mapView.onStart()
-        onDispose { mapView.onStop() }
+        onDispose {
+            apiViewModel.editMapState(mapView.mapWindow.map.cameraPosition)
+            mapView.onStop()
+        }
     }
 }

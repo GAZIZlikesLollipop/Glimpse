@@ -2,6 +2,7 @@
 
 package org.app.glimpse.pressentation.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -87,7 +88,6 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import kotlin.math.roundToInt
-import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 @Composable
@@ -97,6 +97,10 @@ fun ChatScreen(
     navController: NavController,
     apiViewModel: ApiViewModel
 ) {
+    BackHandler {
+        navController.popBackStack()
+        apiViewModel.isChats = true
+    }
     val apiState by apiViewModel.userData.collectAsState()
     val context = LocalContext.current
     if(apiState is ApiState.Success) {
@@ -106,8 +110,8 @@ fun ChatScreen(
         val rawMessages = (userData.sentMessages.filter{it.receiverId == friendId}+userData.receivedMessages.filter{it.senderId == friendId}).sortedBy { it.createdAt }
         val windowInfo = LocalWindowInfo.current
         val data = userData.friends.find { it.id == friendId }
-        val time = LocalDateTime.ofInstant(Instant.ofEpochMilli(data?.lastOnline ?: Clock.System.now().toEpochMilliseconds()),ZoneId.systemDefault())
-        val timeDiff = Duration.between(time, LocalDateTime.now())
+        val time = Instant.ofEpochMilli(data?.lastOnline!!).atZone(ZoneId.systemDefault()).toLocalDateTime()
+        val timeDiff = Duration.between(time, LocalDateTime.now(ZoneId.systemDefault()))
         val cnt = stringArrayResource(R.array.chat_cnt)
         val lastOnline =
             if (timeDiff.toSeconds() < 3) {
@@ -149,7 +153,7 @@ fun ChatScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
-                        model = data?.avatar,
+                        model = data.avatar,
                         imageLoader = ImageLoader.Builder(context)
                             .components { add(OkHttpNetworkFetcherFactory(createUnsafeOkHttpClient())) }
                             .build(),
@@ -161,7 +165,7 @@ fun ChatScreen(
                     )
                     Column {
                         Text(
-                            data?.name ?: "",
+                            data.name,
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(

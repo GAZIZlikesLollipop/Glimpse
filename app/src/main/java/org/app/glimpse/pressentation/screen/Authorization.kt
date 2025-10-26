@@ -7,7 +7,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
-import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -666,7 +665,6 @@ fun LoginScreen(
                         ContextCompat.startForegroundService(context,inta)
                     }
                 }
-                Log.d("HELLO","$hasNotifPermission, $hasFinePermission, $hasBackPermission")
             },
             enabled = loginField.isNotBlank() && passwordField.isNotBlank() && apiState !is ApiState.Loading,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)

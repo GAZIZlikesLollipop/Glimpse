@@ -8,12 +8,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.yandex.mapkit.mapview.MapView
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.pressentation.screen.ChatScreen
 import org.app.glimpse.pressentation.screen.LoginScreen
@@ -28,10 +28,9 @@ import kotlin.time.ExperimentalTime
 @Composable
 fun Navigation(
     navController: NavHostController,
-    padding: PaddingValues
+    padding: PaddingValues,
+    apiViewModel: ApiViewModel
 ){
-
-    val apiViewModel = viewModel<ApiViewModel>()
     val route by apiViewModel.startRoute.collectAsState()
 
     NavHost(

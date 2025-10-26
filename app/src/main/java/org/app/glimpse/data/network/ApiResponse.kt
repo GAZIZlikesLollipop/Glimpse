@@ -95,7 +95,8 @@ data class UpdateUser(
     val friends: List<FriendUser>? = null,
     val sentMessages: List<Message>? = null,
     val receivedMessages: List<Message>? = null,
-    val avatarExt: String? = null
+    val avatarExt: String? = null,
+    val lastOnline: Long? = null
 )
 
 @Serializable

@@ -3,7 +3,6 @@ package org.app.glimpse.data.repository
 import android.content.Context
 import androidx.datastore.dataStore
 import kotlinx.coroutines.flow.Flow
-import org.app.glimpse.FriendData
 import org.app.glimpse.FriendUser
 import org.app.glimpse.Message
 import org.app.glimpse.UserData
@@ -31,11 +30,11 @@ class UserDataRepository(context: Context): UserDataRepo {
     override suspend fun setUserDataNet(data: User) {
         val friends = mutableListOf<FriendUser>()
         for(friend in data.friends) {
-            val friendsFriend = mutableListOf<FriendData>()
+            val friendsFriend = mutableListOf<FriendUser>()
             for(friendFriend in friend.friends!!){
                 val data = friendFriend
                 friendsFriend.add(
-                    FriendData.newBuilder()
+                    FriendUser.newBuilder()
                         .setId(data.id)
                         .setName(data.name)
                         .setBio(data.bio)

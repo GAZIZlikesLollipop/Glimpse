@@ -152,8 +152,15 @@ fun ProfileScreen(
             }
 
             else -> {
-                data.friends.find { it.id == userId } ?:
-                data.friends.find { ff -> ff.friends!!.find { it.id == userId } != null }
+                if(data.friends.find { it.id == userId } != null){
+                    data.friends.find { it.id == userId }!!
+                } else {
+                    var friend: FriendUser? = null
+                    data.friends.forEach { ff ->
+                        friend = ff.friends!!.find { it.id == userId }!!
+                    }
+                    friend
+                }
             }
         }
         var avatarField by remember { mutableStateOf<Bitmap?>(null) }
@@ -333,37 +340,35 @@ fun ProfileScreen(
                                             modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
                                                 .clip(RoundedCornerShape(20.dp)),
                                         )
-                                        if (userData.createdAt != userData.updatedAt) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.End,
-                                                modifier = Modifier.fillMaxWidth()
-                                                    .padding(horizontal = 16.dp)
-                                                    .offset(y = 8.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Edit,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.onBackground.copy(
-                                                        0.8f
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.End,
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(horizontal = 16.dp)
+                                                .offset(y = 8.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Edit,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onBackground.copy(
+                                                    0.8f
+                                                ),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = LocalDateTime
+                                                    .ofInstant(Instant.ofEpochMilli(userData.createdAt), ZoneId.systemDefault())
+                                                    .format(
+                                                        DateTimeFormatter.ofPattern(
+                                                            "yyyy.MM.dd",
+                                                            Locale.getDefault()
+                                                        )
                                                     ),
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                                Spacer(Modifier.width(8.dp))
-                                                Text(
-                                                    text = LocalDateTime
-                                                        .ofInstant(Instant.ofEpochMilli(userData.createdAt), ZoneId.systemDefault())
-                                                        .format(
-                                                            DateTimeFormatter.ofPattern(
-                                                                "yyyy.MM.dd",
-                                                                Locale.getDefault()
-                                                            )
-                                                        ),
-                                                    fontWeight = FontWeight.W500,
-                                                    fontSize = 16.sp,
-                                                    color = MaterialTheme.colorScheme.onBackground.copy(0.8f)
-                                                )
-                                            }
+                                                fontWeight = FontWeight.W500,
+                                                fontSize = 16.sp,
+                                                color = MaterialTheme.colorScheme.onBackground.copy(0.8f)
+                                            )
                                         }
                                     }
                                     Text(
@@ -446,18 +451,10 @@ fun ProfileScreen(
                                                             .fillMaxWidth()
                                                             .clickable {
                                                                 if (f.friends == null) {
-                                                                    apiViewModel.getFriendFriends(f.id)
-                                                                    navController.navigate(
-                                                                        Route.Profile.createRoute(
-                                                                            f.id
-                                                                        )
-                                                                    )
+                                                                    apiViewModel.getFriendFriends(userData.friends.indexOf(f))
+                                                                    navController.navigate(Route.Profile.createRoute(f.id))
                                                                 } else {
-                                                                    navController.navigate(
-                                                                        Route.Profile.createRoute(
-                                                                            f.id
-                                                                        )
-                                                                    )
+                                                                    navController.navigate(Route.Profile.createRoute(f.id))
                                                                 }
                                                             },
                                                         verticalAlignment = Alignment.CenterVertically,
@@ -519,69 +516,72 @@ fun ProfileScreen(
                                         fontWeight = FontWeight.W600
                                     )
                                 }
+                                Spacer(Modifier.height(24.dp))
                             }
-                            item {
-                                Text(
-                                    cnt[2],
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                                    modifier = Modifier.padding(16.dp),
-                                    fontWeight = FontWeight.W500
-                                )
-                            }
-                            items(settings) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            when (it) {
-                                                settings[1] -> {
-                                                    navController.navigate(Route.Login.route)
-                                                    apiViewModel.setRoute(Route.Login.route)
-                                                }
-
-                                                settings[2] -> isDeleteAccount = true
-                                                else -> if (userLang == "en") apiViewModel.setUserLang("ru") else apiViewModel.setUserLang(
-                                                    "en"
-                                                )
-                                            }
-                                        }
-                                ) {
-                                    val color =
-                                        if (it == settings[0]) MaterialTheme.colorScheme.onBackground.copy(
-                                            0.75f
-                                        ) else MaterialTheme.colorScheme.error.copy(0.75f)
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Icon(
-                                            imageVector =
+                            if(userId == data.id){
+                                item {
+                                    Text(
+                                        cnt[2],
+                                        style = MaterialTheme.typography.headlineLarge,
+                                        color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
+                                        modifier = Modifier.padding(16.dp),
+                                        fontWeight = FontWeight.W500
+                                    )
+                                }
+                                items(settings) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
                                                 when (it) {
-                                                    settings[1] -> Icons.AutoMirrored.Rounded.ExitToApp
-                                                    settings[2] -> Icons.Rounded.Delete
-                                                    else -> ImageVector.vectorResource(R.drawable.language)
-                                                },
-                                            contentDescription = null,
-                                            tint = color
-                                        )
-                                        Text(
-                                            if (it == settings[0]) "${it}: $userLang" else it,
-                                            style = MaterialTheme.typography.titleLarge,
-                                            color = color
-                                        )
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                            contentDescription = null,
-                                            tint = color
-                                        )
+                                                    settings[1] -> {
+                                                        navController.navigate(Route.Login.route)
+                                                        apiViewModel.setRoute(Route.Login.route)
+                                                    }
+
+                                                    settings[2] -> isDeleteAccount = true
+                                                    else -> if (userLang == "en") apiViewModel.setUserLang("ru") else apiViewModel.setUserLang(
+                                                        "en"
+                                                    )
+                                                }
+                                            }
+                                    ) {
+                                        val color =
+                                            if (it == settings[0]) MaterialTheme.colorScheme.onBackground.copy(
+                                                0.75f
+                                            ) else MaterialTheme.colorScheme.error.copy(0.75f)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Icon(
+                                                imageVector =
+                                                    when (it) {
+                                                        settings[1] -> Icons.AutoMirrored.Rounded.ExitToApp
+                                                        settings[2] -> Icons.Rounded.Delete
+                                                        else -> ImageVector.vectorResource(R.drawable.language)
+                                                    },
+                                                contentDescription = null,
+                                                tint = color
+                                            )
+                                            Text(
+                                                if (it == settings[0]) "${it}: $userLang" else it,
+                                                style = MaterialTheme.typography.titleLarge,
+                                                color = color
+                                            )
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                                contentDescription = null,
+                                                tint = color
+                                            )
+                                        }
+                                        if (it != settings[2]) HorizontalDivider(color = color)
                                     }
-                                    if (it != settings[2]) HorizontalDivider(color = color)
                                 }
                             }
                             item {
-                                Spacer(Modifier.height(20.dp))
+                                Spacer(Modifier.height(30.dp))
                             }
                         }
                         if (isDeleteAccount) {

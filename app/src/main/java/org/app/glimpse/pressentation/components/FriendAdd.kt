@@ -50,9 +50,12 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import org.app.glimpse.R
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
@@ -204,8 +207,9 @@ fun FriendCard(
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .width(windowInfo.containerSize.width.dp).height(100.dp)
+                .padding(8.dp)
+                .width(windowInfo.containerSize.width.dp)
+                .height(100.dp)
                 .clickable { apiViewModel.addFriend(f.id) },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy((windowInfo.containerSize.width/80).dp)
@@ -213,18 +217,27 @@ fun FriendCard(
             AsyncImage(
                 model = f.avatar,
                 contentDescription = f.name,
-                modifier = Modifier.clip(RoundedCornerShape(24.dp)),
-                contentScale = ContentScale.Fit
+                imageLoader = ImageLoader.Builder(context)
+                    .components { add(OkHttpNetworkFetcherFactory( createUnsafeOkHttpClient())) }
+                    .build(),
+                modifier = Modifier
+                    .size((windowInfo.containerSize.width / 12).dp)
+                    .clip(RoundedCornerShape(24.dp)),
+                contentScale = ContentScale.FillBounds,
             )
             Text(
                 text = f.name,
                 fontWeight = FontWeight.W600,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = friendLocation,
                 color = MaterialTheme.colorScheme.onBackground.copy(0.5f),
-                fontWeight = FontWeight.W500
+                fontWeight = FontWeight.W500,
+                modifier = Modifier.width((windowInfo.containerSize.width / 10).dp)
             )
         }
         if(isDiv) HorizontalDivider()

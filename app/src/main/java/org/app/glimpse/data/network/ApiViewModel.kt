@@ -2,10 +2,16 @@ package org.app.glimpse.data.network
 
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.map.CameraPosition
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.websocket.DefaultWebSocketSession
 import io.ktor.websocket.Frame
 import kotlinx.coroutines.Deferred
@@ -18,14 +24,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.app.glimpse.FriendData
 import org.app.glimpse.Route
 import org.app.glimpse.UserData
 import org.app.glimpse.data.repository.ApiRepository
 import org.app.glimpse.data.repository.UserDataRepository
 import org.app.glimpse.data.repository.UserPreferencesRepository
 import java.util.Locale
-import kotlin.time.ExperimentalTime
 
 sealed interface ApiState {
     object Initial: ApiState
@@ -43,6 +47,8 @@ class ApiViewModel(
     private val _geocoderState = MutableStateFlow<ApiState>(ApiState.Loading)
     val geocoderState = _geocoderState.asStateFlow()
     var webSocketCnn: DefaultWebSocketSession? = null
+    var isFirst by mutableStateOf(true)
+    var isChats by mutableStateOf(false)
 
     fun getLocation(
         longitude: Double,
@@ -129,34 +135,23 @@ class ApiViewModel(
         }
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun getFriendFriends(id: Long){
+    fun getFriendFriends(mutFriendId: Int){
         viewModelScope.launch {
             try {
-                val user = you.value
-                val friendFriends = mutableListOf<FriendData>()
-                apiRepository.getFriendFriends(id).forEach { data ->
-                    friendFriends.add(
-                        FriendData.newBuilder()
-                            .setId(data.id)
-                            .setName(data.name)
-                            .setBio(data.bio)
-                            .setAvatar(data.avatar)
-                            .setLatitude(data.latitude)
-                            .setLongitude(data.longitude)
-                            .setCreatedAt(data.createdAt)
-                            .setUpdatedAt(data.updatedAt)
-                            .build()
-                    )
+                val user = ((userData.value as ApiState.Success).data as User)
+                var friendId = 0
+                for(f in user.friends) {
+                    if(f.friends?.get(mutFriendId) != null){
+                        friendId = user.friends.indexOf(f)
+                    }
                 }
-                val friends = you.value.friendsList
-                    .find { it.id == id } !!.toBuilder()
-                    .addAllFriends(friendFriends)
-                    .build()
-                user.toBuilder().addFriends(friends).build()
-                userDataRepository.setUserData(user)
+                val friendsNet = apiRepository.getFriendFriends(user.friends[friendId].friends?.get(mutFriendId)!!.id)
+                val friendNet = user.friends[friendId].friends?.get(mutFriendId)?.copy(friends = friendsNet)
+                val friendMap = user.friends[friendId].friends?.toMutableList().apply { this?.set(mutFriendId, friendNet!!) }
+                val updatedFriends = user.friends.toMutableList().apply { this[friendId] = this[friendId].copy(friends = friendMap) }
+                _userData.value = ApiState.Success(user.copy(friends = updatedFriends))
             } catch(e: Exception) {
-                Log.d("HEllo",e.localizedMessage ?: "")
+                Log.e("friends",e.localizedMessage ?: "")
             }
         }
     }
@@ -209,7 +204,6 @@ class ApiViewModel(
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     private fun setUserData() {
         val data = you.value
         val friends = mutableListOf<FriendUser>()
@@ -290,22 +284,11 @@ class ApiViewModel(
 
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun getOwnData(){
-        _userData.value = ApiState.Loading
-        viewModelScope.launch {
-             try {
-                 userDataRepository.setUserDataNet(apiRepository.getUserData(token.value))
-                 setUserData()
-             } catch(_: Exception) {
-                 setUserData()
-             }
-        }
-    }
 
     fun deleteAccount() {
         viewModelScope.launch {
             _userData.value = ApiState.Initial
+            userDataRepository.setUserData(UserData.getDefaultInstance())
             userPreferencesRepository.setStartRoute(Route.Login.route)
             apiRepository.deleteAccount(token.value)
         }
@@ -360,21 +343,49 @@ class ApiViewModel(
             }
         }
     }
-
+    fun clearData(){
+        viewModelScope.launch {
+            _userData.value = ApiState.Initial
+            userDataRepository.setUserData(UserData.getDefaultInstance())
+        }
+    }
+    fun getOwnData(callback: () -> Unit){
+        _userData.value = ApiState.Loading
+        viewModelScope.launch {
+            try {
+                val res = apiRepository.getUserData(token.value)
+                userDataRepository.setUserDataNet(res)
+                _userData.value = ApiState.Success(res)
+            } catch(e: Exception) {
+                Log.e("OWNDATA",e.localizedMessage ?: "")
+                setUserData()
+            }
+            catch(_: ClientRequestException) {
+                Log.d("OWNDATA", "YES SURE YES SURE")
+                setUserData()
+                callback()
+                clearData()
+            }
+        }
+    }
     fun startWebSocket(){
         viewModelScope.launch {
-            apiRepository.startWebSocket(
-                token.value,
-                {
-                    viewModelScope.launch {
-                        userDataRepository.setUserDataNet(it)
-                        _userData.value = ApiState.Success(it)
+            try {
+                apiRepository.startWebSocket(
+                    token.value,
+                    {
+                        viewModelScope.launch {
+                            userDataRepository.setUserDataNet(it)
+                            _userData.value = ApiState.Success(it)
+                        }
+                    },
+                    {
+                        webSocketCnn = it
                     }
-                },
-                {
-                    webSocketCnn = it
-                }
-            )
+                )
+            } catch (e: Exception){
+                Log.e("WEBSOCKET",e.localizedMessage ?: "")
+            }
         }
     }
 
@@ -390,7 +401,6 @@ class ApiViewModel(
             }
             withContext(Dispatchers.IO) {
                 try {
-                    apiRepository.updateUserData(token.value, UpdateUser())
                     val result = apiRepository.sendMessage(
                         msg = msg,
                         token = token.value,
@@ -435,6 +445,13 @@ class ApiViewModel(
                 Log.e("UPDATEMSG", e.localizedMessage ?: "")
             }
         }
+    }
+    private val _mapState = MutableStateFlow(
+        CameraPosition(Point(41.311286, 69.279755),15f,0f,0f)
+    )
+    val mapState = _mapState.asStateFlow()
+    fun editMapState(state: CameraPosition){
+        _mapState.value = state
     }
 }
 

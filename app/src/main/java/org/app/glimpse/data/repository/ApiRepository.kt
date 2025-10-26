@@ -79,7 +79,7 @@ interface ApiRepo {
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
 //    val host = "10.0.2.2"
-    val host = "192.168.1.3"
+    val host = "172.30.102.229"
 
     override suspend fun deleteAccount(token: String) {
         httpClient.delete("https://$host:8080/api/users") { header("Authorization", "Bearer $token") }
@@ -145,6 +145,9 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
             setBody(
                 MultiPartFormDataContent(
                     formData {
+                        if(data.lastOnline != null) {
+                            append("online",data.lastOnline)
+                        }
                         if(data.name != null) {
                             append("name", data.name)
                         }
