@@ -157,7 +157,11 @@ fun ProfileScreen(
                 } else {
                     var friend: FriendUser? = null
                     data.friends.forEach { ff ->
-                        friend = ff.friends!!.find { it.id == userId }!!
+                        friend =
+                            ff.friends
+                            ?.find {
+                                it.id == userId
+                            }
                     }
                     friend
                 }
@@ -291,8 +295,8 @@ fun ProfileScreen(
                             if (data.friends.find { it.id == userId } != null) {
                                 Button(
                                     onClick = {
-                                        navController.navigate(Route.Main.route)
                                         apiViewModel.deleteFriend(userId)
+                                        navController.navigate(Route.Main.route)
                                     },
                                     shape = RoundedCornerShape(20.dp),
                                     contentPadding = PaddingValues(0.dp),

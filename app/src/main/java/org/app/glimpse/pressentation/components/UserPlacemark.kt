@@ -33,8 +33,7 @@ fun UserPlacemark(
     name: String,
     userView: ComposeView,
     placemark: PlacemarkMapObject,
-    root: ViewGroup,
-    hiddenHost: ViewGroup
+    root: ViewGroup
 ){
     val rainbowColorsBrush = remember {
         Brush.sweepGradient(
@@ -74,7 +73,7 @@ fun UserPlacemark(
             onSuccess = {
                 userView.post {
                     val vp = ViewProvider(userView, true)
-                    placemark.setView(vp) { root.post { root.removeView(hiddenHost) } }
+                    placemark.setView(vp) { root.post { root.removeView(userView) } }
                 }
             }
         )

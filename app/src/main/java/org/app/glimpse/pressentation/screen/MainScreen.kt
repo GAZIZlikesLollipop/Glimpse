@@ -8,7 +8,6 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Build
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -184,42 +184,37 @@ fun MainScreen(
                 val root = activity.findViewById<ViewGroup>(android.R.id.content)
 
                 val userView = ComposeView(context).apply {
+                    translationX = -10_000f // offscreen, но прикреплён к окну
                     setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 }
 
-                val hiddenHost = FrameLayout(context).apply {
-                    translationX = -10_000f // offscreen, но прикреплён к окну
-                    (userView.parent as? ViewGroup)?.removeView(userView)
-                    addView(userView)
+                (userView.parent as? ViewGroup)?.removeView(userView)
+
+                root.addView(userView)
+
+                if(!apiViewModel.isFirst) {
+                    mapWindow.map.mapObjects.clear()
                 }
-
-                (hiddenHost.parent as? ViewGroup)?.removeView(hiddenHost)
-
-                root.addView(hiddenHost)
 
                 val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry =
                     Point(you.latitude, you.longitude)
                 }
 
                 userView.doOnAttach {
-                    userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root,hiddenHost) }
+                    userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root) }
                 }
 
                 for(friend in you.friendsList){
                     val friendView = ComposeView(context).apply {
+                        translationX = -10_000f // offscreen, но прикреплён к окну
                         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                     }
-                    val hiddenHost = FrameLayout(context).apply {
-                        translationX = -10_000f // offscreen, но прикреплён к окну
-                        (userView.parent as? ViewGroup)?.removeView(friendView)
-                        addView(friendView)
-                    }
-                    (hiddenHost.parent as? ViewGroup)?.removeView(hiddenHost)
+                    (friendView.parent as? ViewGroup)?.removeView(friendView)
 
-                    root.addView(hiddenHost)
+                    root.addView(friendView)
                     val friendPlacemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(friend.latitude,friend.longitude)}
                     friendView.doOnAttach {
-                        friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,friendPlacemark,root,hiddenHost) }
+                        friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,friendPlacemark,root) }
                     }
                 }
             }
@@ -292,8 +287,12 @@ fun MainScreen(
         }
         Button(
             onClick = {
-                val userData = (apiState as ApiState.Success).data as User
-                navController.navigate(Route.Profile.createRoute(userData.id))
+                if(apiState is ApiState.Success){
+                    val userData = (apiState as ApiState.Success).data as User
+                    navController.navigate(Route.Profile.createRoute(userData.id))
+                } else {
+                    navController.navigate(Route.Profile.createRoute(0))
+                }
             },
             shape = CircleShape,
             modifier = Modifier
@@ -488,9 +487,33 @@ fun MainScreen(
                         }
                         FriendAdd(
                             apiViewModel,
-                            { isAdd = false }
+                            { isAdd = false },
+                            navController
                         )
                     }
+                }
+            }
+        }
+        if(apiState !is ApiState.Success){
+            Box(
+                modifier = Modifier.fillMaxSize().offset(y = 32.dp),
+                contentAlignment = Alignment.TopCenter
+            ){
+                Button(
+                    onClick = {
+                        navController.navigate(Route.Login.route)
+                        apiViewModel.setRoute(Route.Login.route)
+                        apiViewModel.clearData()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(
+                        text = "Log out",
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
             }
         }

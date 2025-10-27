@@ -91,7 +91,7 @@ class ApiViewModel(
         .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            Route.Login.route
+            Route.Default.route
         )
 
     val userLang = userPreferencesRepository.userLang
@@ -124,7 +124,7 @@ class ApiViewModel(
                 delay(100)
             }
             try {
-                val data = apiRepository.getUserData(token.value)
+                val data = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(data)
                 userDataRepository.setUserDataNet(data)
                 userPreferencesRepository.setStartRoute(Route.Main.route)
@@ -193,7 +193,7 @@ class ApiViewModel(
                 delay(100)
             }
             try {
-                val data = apiRepository.getUserData(token.value)
+                val data = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(data)
                 userDataRepository.setUserDataNet(data)
                 userPreferencesRepository.setStartRoute(Route.Main.route)
@@ -326,7 +326,7 @@ class ApiViewModel(
         viewModelScope.launch {
             try {
                 apiRepository.addFriend(id,token.value)
-                _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
+                _userData.value = ApiState.Success(apiRepository.getUserData(token.value)!!)
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
             }
@@ -337,7 +337,9 @@ class ApiViewModel(
         viewModelScope.launch {
             try {
                 apiRepository.deleteFriend(id,token.value)
-                _userData.value = ApiState.Success(apiRepository.getUserData(token.value))
+                val resp = apiRepository.getUserData(token.value)!!
+                _userData.value = ApiState.Success(resp)
+                userDataRepository.setUserDataNet(resp)
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
             }
@@ -354,8 +356,10 @@ class ApiViewModel(
         viewModelScope.launch {
             try {
                 val res = apiRepository.getUserData(token.value)
-                userDataRepository.setUserDataNet(res)
-                _userData.value = ApiState.Success(res)
+                if(res != null) {
+                    userDataRepository.setUserDataNet(res)
+                    _userData.value = ApiState.Success(res)
+                }
             } catch(e: Exception) {
                 Log.e("OWNDATA",e.localizedMessage ?: "")
                 setUserData()
@@ -406,7 +410,7 @@ class ApiViewModel(
                         token = token.value,
                         receiverId = receiverId
                     )
-                    val data = apiRepository.getUserData(token.value)
+                    val data = apiRepository.getUserData(token.value)!!
                     _userData.value = ApiState.Success(data)
                     userDataRepository.setUserDataNet(data)
                     webSocketCnn!!.send(Frame.Text(""))
@@ -422,7 +426,7 @@ class ApiViewModel(
         viewModelScope.launch {
             try {
                 apiRepository.deleteMessage(msgId,token.value)
-                val data = apiRepository.getUserData(token.value)
+                val data = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(data)
                 userDataRepository.setUserDataNet(data)
             } catch (e: Exception) {
@@ -438,7 +442,7 @@ class ApiViewModel(
         viewModelScope.launch {
             try {
                apiRepository.updateMessage(id,Message(content = content),token.value)
-                val data = apiRepository.getUserData(token.value)
+                val data = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(data)
                 userDataRepository.setUserDataNet(data)
             } catch (e: Exception){

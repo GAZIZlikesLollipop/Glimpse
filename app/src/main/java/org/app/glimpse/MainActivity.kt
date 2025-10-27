@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.yandex.mapkit.MapKitFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.ApiViewModelFactory
 import org.app.glimpse.data.network.UpdateUser
@@ -40,10 +41,11 @@ class MainActivity : ComponentActivity() {
             val viewModel = viewModel<ApiViewModel>()
             val token by viewModel.token.collectAsState()
             val navController = rememberNavController()
+            val apiState by viewModel.userData.collectAsState()
             LaunchedEffect(Unit) {
                 scope.launch {
                     while(true){
-                        if(token.isNotBlank()) {
+                        if(token.isNotBlank() && apiState is ApiState.Success) {
                             apiRepository.updateUserData(token, UpdateUser(lastOnline = 0))
                         }
                         delay(1000)

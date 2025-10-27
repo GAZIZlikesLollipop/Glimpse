@@ -109,8 +109,8 @@ fun ChatScreen(
         val userData = (apiState as ApiState.Success).data as User
         val rawMessages = (userData.sentMessages.filter{it.receiverId == friendId}+userData.receivedMessages.filter{it.senderId == friendId}).sortedBy { it.createdAt }
         val windowInfo = LocalWindowInfo.current
-        val data = userData.friends.find { it.id == friendId }
-        val time = Instant.ofEpochMilli(data?.lastOnline!!).atZone(ZoneId.systemDefault()).toLocalDateTime()
+        val data = userData.friends.find { it.id == friendId }!!
+        val time = Instant.ofEpochMilli(data.lastOnline).atZone(ZoneId.systemDefault()).toLocalDateTime()
         val timeDiff = Duration.between(time, LocalDateTime.now(ZoneId.systemDefault()))
         val cnt = stringArrayResource(R.array.chat_cnt)
         val lastOnline =

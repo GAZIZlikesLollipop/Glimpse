@@ -53,10 +53,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import org.app.glimpse.R
+import org.app.glimpse.Route
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.User
@@ -68,28 +70,31 @@ import kotlin.time.ExperimentalTime
 @Composable
 fun FriendAdd(
     apiViewModel: ApiViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    navController: NavController
 ){
     var searchText by rememberSaveable { mutableStateOf("") }
     val searched = remember { mutableStateListOf<Users>() }
     val cnt = stringArrayResource(R.array.main_cnt)
     val windowInfo = LocalWindowInfo.current
     val apiState by apiViewModel.userData.collectAsState()
-    val userData = (apiState as ApiState.Success).data as User
 
     LaunchedEffect(Unit) {
         apiViewModel.getUserNames()
     }
     LaunchedEffect(searchText) {
         searched.clear()
-        apiViewModel.userNames.forEach {
-            if(
-                searchText.isNotBlank() &&
-                it.name.lowercase().trim().contains(searchText.lowercase().trim())
-                && userData.id != it.id
-                && userData.friends.find { fu -> fu.id == it.id } == null
-            ) {
-                searched.add(it)
+        if(apiState is ApiState.Success) {
+            val userData = (apiState as ApiState.Success).data as User
+            apiViewModel.userNames.forEach {
+                if (
+                    searchText.isNotBlank() &&
+                    it.name.lowercase().trim().contains(searchText.lowercase().trim())
+                    && userData.id != it.id
+                    && userData.friends.find { fu -> fu.id == it.id } == null
+                ) {
+                    searched.add(it)
+                }
             }
         }
     }
@@ -148,7 +153,8 @@ fun FriendAdd(
                 )
             )
         }
-        if(searched.isNotEmpty()) {
+        if(searched.isNotEmpty() && apiState is ApiState.Success) {
+            val userData = (apiState as ApiState.Success).data as User
             Spacer(Modifier.height(24.dp))
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -158,7 +164,8 @@ fun FriendAdd(
                         FriendCard(
                             it,
                             it != searched.last(),
-                            apiViewModel
+                            apiViewModel,
+                            navController
                         )
                     }
                 }
@@ -180,7 +187,8 @@ fun FriendAdd(
 fun FriendCard(
     f: Users,
     isDiv: Boolean,
-    apiViewModel: ApiViewModel
+    apiViewModel: ApiViewModel,
+    navController: NavController
 ){
     val context = LocalContext.current
     val geocoder = Geocoder(context, Locale.getDefault())
@@ -210,7 +218,10 @@ fun FriendCard(
                 .padding(8.dp)
                 .width(windowInfo.containerSize.width.dp)
                 .height(100.dp)
-                .clickable { apiViewModel.addFriend(f.id) },
+                .clickable {
+                    apiViewModel.addFriend(f.id)
+                    navController.navigate(Route.Profile.createRoute(f.id))
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy((windowInfo.containerSize.width/80).dp)
         ){

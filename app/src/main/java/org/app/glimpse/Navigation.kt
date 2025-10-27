@@ -4,23 +4,26 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.yandex.mapkit.mapview.MapView
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.pressentation.screen.ChatScreen
 import org.app.glimpse.pressentation.screen.LoginScreen
 import org.app.glimpse.pressentation.screen.MainScreen
 import org.app.glimpse.pressentation.screen.ProfileScreen
 import org.app.glimpse.pressentation.screen.RegisterScreen
-import org.app.glimpse.pressentation.screen.TermsConditionsScreen
 import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalTime::class)
@@ -37,6 +40,9 @@ fun Navigation(
         navController = navController,
         startDestination = route
     ){
+        composable(Route.Default.route) {
+            Default()
+        }
         composable(Route.Main.route){
             MainScreen(padding, navController,apiViewModel)
         }
@@ -72,17 +78,19 @@ fun Navigation(
         composable(Route.Register.route){
             RegisterScreen(navController,apiViewModel)
         }
-        composable(Route.TermsConditions.route){
-            TermsConditionsScreen()
-        }
     }
 }
 
+@Composable
+fun Default(){
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+}
+
 sealed class Route(val route: String){
+    object Default: Route("default")
     object Main: Route("main")
     object Chat: Route("chat/{friendId}"){ fun createRoute(friendId: Long) = "chat/$friendId" }
     object Profile: Route("profile/{userId}"){ fun createRoute(userId: Long) = "profile/$userId" }
     object Login: Route("login")
     object Register: Route("register")
-    object TermsConditions: Route("termsConditions")
 }

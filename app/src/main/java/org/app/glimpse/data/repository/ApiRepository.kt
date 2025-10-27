@@ -21,7 +21,6 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.InternalAPI
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
-import kotlinx.serialization.json.Json
 import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.GeocoderResponse
@@ -41,7 +40,7 @@ interface ApiRepo {
         zoomLvl: Int,
         language: String? = null
     ): GeocoderResponse
-    suspend fun getUserData(token: String): User
+    suspend fun getUserData(token: String): User?
     suspend fun signIn(login: String, password: String): String
     suspend fun signUp(data: SignUpUser)
     suspend fun startWebSocket(
@@ -93,10 +92,14 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         return httpClient.get("https://nominatim.openstreetmap.org/reverse?format=json&lat=$latitude&lon=$longitude&zoom=$zoomLvl&addressdetails=1&accept-language=${language ?: Locale.getDefault().language.lowercase(Locale.ROOT)}").body<GeocoderResponse>()
     }
 
-    override suspend fun getUserData(token: String): User {
-        return httpClient.get("https://$host:8080/api/users"){
-            header("Authorization", "Bearer $token")
-        }.body<User>()
+    override suspend fun getUserData(token: String): User? {
+        return try {
+            httpClient.get("https://$host:8080/api/users"){
+                header("Authorization", "Bearer $token")
+            }.body<User>()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     override suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser> {
