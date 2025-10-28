@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -55,6 +56,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,7 +68,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -74,7 +79,6 @@ import androidx.navigation.NavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.app.glimpse.R
 import org.app.glimpse.data.network.ApiState
@@ -126,7 +130,7 @@ fun ChatScreen(
                     else -> "${timeDiff.toDays() / 365} ${cnt[6]}"
                 }
             }
-        var chatMessage by rememberSaveable { mutableStateOf("") }
+        var chatMessage by remember { mutableStateOf(TextFieldValue("")) }
         val messages = remember { mutableStateMapOf<String, List<Message>>() }
         var showPopUp by rememberSaveable { mutableStateOf(false) }
 
@@ -135,10 +139,19 @@ fun ChatScreen(
         var currInd by rememberSaveable { mutableLongStateOf(0) }
 
         var isUpdate by rememberSaveable { mutableStateOf(false) }
+        val focusRequester = remember { FocusRequester() }
 
         LaunchedEffect(Unit) {
             messages.putAll(groupingMessages(rawMessages))
         }
+
+        val listState = rememberLazyListState()
+        LaunchedEffect(apiState) {
+            val msgs = (userData.sentMessages.filter{it.receiverId == friendId}+userData.receivedMessages.filter{it.senderId == friendId}).sortedBy { it.createdAt }
+            messages.clear()
+            messages.putAll(groupingMessages(msgs))
+        }
+
         Box(Modifier.fillMaxSize()){
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -196,13 +209,8 @@ fun ChatScreen(
                     }
                 }
 
-                val listState = rememberLazyListState()
-                LaunchedEffect(messages) {
-                    delay(1000)
-                    if(messages.isNotEmpty()){
-                        listState.animateScrollToItem(messages.toList().last().second.lastIndex)
-                    }
-                }
+                HorizontalDivider(thickness = 2.dp, color = MaterialTheme.colorScheme.onBackground.copy(0.35f))
+
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxWidth().weight(1f)
@@ -261,7 +269,7 @@ fun ChatScreen(
                                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                                 ) {
                                                     Text(
-                                                        "${createdAt.hour}:${createdAt.minute}",
+                                                        "${createdAt.hour}:${if(createdAt.minute < 10) "0${createdAt.minute}" else createdAt.minute}",
                                                         color = MaterialTheme.colorScheme.onBackground.copy(
                                                             0.5f
                                                         ),
@@ -302,7 +310,7 @@ fun ChatScreen(
                                             ) {
                                                 Text(msg.content)
                                                 Text(
-                                                    "${createdAt.hour}:${createdAt.minute}",
+                                                    "${createdAt.hour}:${if(createdAt.minute < 10) "0${createdAt.minute}" else createdAt.minute}",
                                                     color = MaterialTheme.colorScheme.onBackground.copy(
                                                         0.5f
                                                     ),
@@ -312,6 +320,18 @@ fun ChatScreen(
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                if(messages.isNotEmpty()){
+                    LaunchedEffect(apiState) {
+                        if(messages.isNotEmpty()) {
+                            scope.launch {
+                                listState.animateScrollToItem(
+                                    messages.toList().reversed().last().second.lastIndex
+                                )
                             }
                         }
                     }
@@ -331,40 +351,37 @@ fun ChatScreen(
                         onValueChange = { chatMessage = it },
                         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                         placeholder = { Text(cnt[7]) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).focusRequester(focusRequester)
                     )
                     AnimatedVisibility(
-                        visible = chatMessage.trim().isNotBlank(),
+                        visible = chatMessage.text.trim().isNotBlank(),
                     ) {
                         Button(
                             onClick = {
                                 if(isUpdate) {
-                                    apiViewModel.updateMessage(currInd,chatMessage)
-                                    val msgs = rawMessages.toMutableList()
-                                    msgs.set(msgs.indexOf(msgs.find { it.id == currInd }),msgs.find { it.id == currInd }!!.copy(content = chatMessage))
-                                    messages.clear()
-                                    messages.putAll(groupingMessages(msgs))
-                                    isUpdate = false
-                                    chatMessage = ""
+                                    scope.launch {
+                                        apiViewModel.updateMessage(currInd,chatMessage.text)
+                                        val msgs = rawMessages.toMutableList()
+                                        msgs.set(msgs.indexOf(msgs.find { it.id == currInd }),msgs.find { it.id == currInd }!!.copy(content = chatMessage.text))
+                                        messages.clear()
+                                        messages.putAll(groupingMessages(msgs))
+                                        isUpdate = false
+                                        chatMessage = TextFieldValue("")
+                                    }
                                 } else {
                                     scope.launch {
                                         val mesg = apiViewModel.sendMessage(
-                                            Message(content = chatMessage),
+                                            Message(content = chatMessage.text),
                                             friendId
                                         )
                                         val msgs = rawMessages.toMutableList()
                                         msgs.add(mesg.await()!!)
                                         messages.clear()
                                         messages.putAll(groupingMessages(msgs))
-                                        chatMessage = ""
+                                        chatMessage = TextFieldValue("")
                                     }
                                 }
                                 focusManager.clearFocus()
-                                scope.launch {
-                                    if (messages.isNotEmpty()) {
-                                        listState.animateScrollToItem(messages.toList().last().second.lastIndex)
-                                    }
-                                }
                             },
                             shape = CircleShape,
                             contentPadding = PaddingValues(0.dp),
@@ -405,6 +422,8 @@ fun ChatScreen(
                                 Row(
                                     modifier = Modifier.fillMaxWidth().clickable {
                                         isUpdate = true
+                                        focusRequester.requestFocus()
+                                        chatMessage = chatMessage.copy(text = userData.sentMessages.find { it.id == currInd }!!.content, TextRange(userData.sentMessages.find { it.id == currInd }!!.content.length))
                                         showPopUp = false
                                     },
                                     verticalAlignment = Alignment.CenterVertically,
@@ -448,6 +467,36 @@ fun ChatScreen(
                                     style = MaterialTheme.typography.titleLarge
                                 )
                             }
+                        }
+                    }
+                }
+            }
+            if(messages.isNotEmpty()) {
+                if (listState.layoutInfo.visibleItemsInfo.last().index < messages.toList()
+                        .last().second.lastIndex
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(vertical = 16.dp),
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    listState.animateScrollToItem(
+                                        messages.toList().reversed().last().second.lastIndex
+                                    )
+                                }
+                            },
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary.copy(0.35f),
+                                contentColor = MaterialTheme.colorScheme.onBackground.copy(0.5f)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.KeyboardArrowDown,
+                                contentDescription = "Down"
+                            )
                         }
                     }
                 }

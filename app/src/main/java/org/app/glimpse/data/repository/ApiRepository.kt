@@ -48,10 +48,10 @@ interface ApiRepo {
         onReceived: (User) -> Unit,
         onWebSocket: (DefaultClientWebSocketSession) -> Unit
     )
-    suspend fun updateUserData(token: String, data: UpdateUser): User
-    suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
-    suspend fun deleteAccount(token: String)
     suspend fun getUserNames(): List<Users>
+    suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser>
+    suspend fun updateUserData(token: String, data: UpdateUser): User
+    suspend fun deleteAccount(token: String)
     suspend fun addFriend(
         id: Long,
         token: String
@@ -70,7 +70,6 @@ interface ApiRepo {
         token: String
     )
     suspend fun updateMessage(
-        id: Long,
         msg: Message,
         token: String
     )
@@ -232,7 +231,6 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     override suspend fun updateMessage(
-        id: Long,
         msg: Message,
         token: String
     ) {

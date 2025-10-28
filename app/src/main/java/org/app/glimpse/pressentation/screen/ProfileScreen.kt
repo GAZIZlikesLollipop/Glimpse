@@ -541,6 +541,7 @@ fun ProfileScreen(
                                                     settings[1] -> {
                                                         navController.navigate(Route.Login.route)
                                                         apiViewModel.setRoute(Route.Login.route)
+                                                        apiViewModel.isFirst = true
                                                     }
 
                                                     settings[2] -> isDeleteAccount = true

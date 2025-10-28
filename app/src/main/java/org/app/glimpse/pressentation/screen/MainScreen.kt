@@ -503,6 +503,7 @@ fun MainScreen(
                     onClick = {
                         navController.navigate(Route.Login.route)
                         apiViewModel.setRoute(Route.Login.route)
+                        apiViewModel.isFirst = true
                         apiViewModel.clearData()
                     },
                     colors = ButtonDefaults.buttonColors(

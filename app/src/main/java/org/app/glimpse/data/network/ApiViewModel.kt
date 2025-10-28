@@ -287,10 +287,11 @@ class ApiViewModel(
 
     fun deleteAccount() {
         viewModelScope.launch {
+            apiRepository.deleteAccount(token.value)
+            webSocketCnn!!.send(Frame.Text(""))
             _userData.value = ApiState.Initial
             userDataRepository.setUserData(UserData.getDefaultInstance())
             userPreferencesRepository.setStartRoute(Route.Login.route)
-            apiRepository.deleteAccount(token.value)
         }
     }
 
@@ -309,6 +310,7 @@ class ApiViewModel(
                 val response = apiRepository.updateUserData(token.value,data)
                 _userData.value = ApiState.Success(response)
                 userDataRepository.setUserDataNet(response)
+                webSocketCnn!!.send(Frame.Text(""))
             } catch(e: Exception) {
                 Log.e("Update",e.localizedMessage ?: "")
             }
@@ -327,6 +329,7 @@ class ApiViewModel(
             try {
                 apiRepository.addFriend(id,token.value)
                 _userData.value = ApiState.Success(apiRepository.getUserData(token.value)!!)
+                webSocketCnn!!.send(Frame.Text(""))
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
             }
@@ -340,6 +343,7 @@ class ApiViewModel(
                 val resp = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(resp)
                 userDataRepository.setUserDataNet(resp)
+                webSocketCnn!!.send(Frame.Text(""))
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
             }
@@ -429,6 +433,7 @@ class ApiViewModel(
                 val data = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(data)
                 userDataRepository.setUserDataNet(data)
+                webSocketCnn!!.send(Frame.Text(""))
             } catch (e: Exception) {
                 Log.e("DELETE_MSG", e.localizedMessage ?: "")
             }
@@ -441,10 +446,11 @@ class ApiViewModel(
     ){
         viewModelScope.launch {
             try {
-               apiRepository.updateMessage(id,Message(content = content),token.value)
+               apiRepository.updateMessage(Message(id,content),token.value)
                 val data = apiRepository.getUserData(token.value)!!
                 _userData.value = ApiState.Success(data)
                 userDataRepository.setUserDataNet(data)
+                webSocketCnn!!.send(Frame.Text(""))
             } catch (e: Exception){
                 Log.e("UPDATEMSG", e.localizedMessage ?: "")
             }
