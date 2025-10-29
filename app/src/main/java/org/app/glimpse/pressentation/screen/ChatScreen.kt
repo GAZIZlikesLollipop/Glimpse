@@ -471,36 +471,6 @@ fun ChatScreen(
                     }
                 }
             }
-            if(messages.isNotEmpty()) {
-                if (listState.layoutInfo.visibleItemsInfo.last().index < messages.toList()
-                        .last().second.lastIndex
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.BottomEnd
-                    ) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    listState.animateScrollToItem(
-                                        messages.toList().reversed().last().second.lastIndex
-                                    )
-                                }
-                            },
-                            contentPadding = PaddingValues(0.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(0.35f),
-                                contentColor = MaterialTheme.colorScheme.onBackground.copy(0.5f)
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.KeyboardArrowDown,
-                                contentDescription = "Down"
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
