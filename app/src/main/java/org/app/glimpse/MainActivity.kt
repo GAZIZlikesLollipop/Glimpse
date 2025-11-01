@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.yandex.mapkit.MapKitFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -25,22 +26,24 @@ import org.app.glimpse.pressentation.theme.GlimpseTheme
 
 class MainActivity : ComponentActivity() {
     lateinit var apiViewModel: ApiViewModel
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             val apiRepository = (application as MyApplication).apiRepository
+            val userPreferencesRepository = (application as MyApplication).userPreferencesRepository
             apiViewModel = viewModels<ApiViewModel>{
                 ApiViewModelFactory(
                     apiRepository,
-                    (application as MyApplication).userPreferencesRepository,
+                    userPreferencesRepository,
                     (application as MyApplication).userDataRepository
                 )
             }.value
-            val scope = rememberCoroutineScope()
             val viewModel = viewModel<ApiViewModel>()
-            val token by viewModel.token.collectAsState()
             val navController = rememberNavController()
+            val scope = rememberCoroutineScope()
+            val token by viewModel.token.collectAsState()
             val apiState by viewModel.userData.collectAsState()
             LaunchedEffect(Unit) {
                 scope.launch {
@@ -48,7 +51,7 @@ class MainActivity : ComponentActivity() {
                         if(token.isNotBlank() && apiState is ApiState.Success) {
                             apiRepository.updateUserData(token, UpdateUser(lastOnline = 0))
                         }
-                        delay(1000)
+                        delay(2000)
                     }
                 }
             }
@@ -63,7 +66,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
-
         }
     }
 

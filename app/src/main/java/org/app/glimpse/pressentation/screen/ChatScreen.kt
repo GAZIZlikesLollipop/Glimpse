@@ -32,7 +32,6 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -118,7 +117,7 @@ fun ChatScreen(
         val timeDiff = Duration.between(time, LocalDateTime.now(ZoneId.systemDefault()))
         val cnt = stringArrayResource(R.array.chat_cnt)
         val lastOnline =
-            if (timeDiff.toSeconds() < 3) {
+            if (timeDiff.toSeconds() < 4) {
                 cnt[0]
             } else {
                 when {

@@ -3,7 +3,6 @@
 package org.app.glimpse.pressentation.screen
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
@@ -79,9 +78,12 @@ import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.mapview.MapView
+import kotlinx.coroutines.cancel
+import org.app.glimpse.MyApplication
 import org.app.glimpse.R
 import org.app.glimpse.Route
 import org.app.glimpse.data.LocationTrackingService
+import org.app.glimpse.data.LocationTrackingService.Actions
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.User
@@ -89,7 +91,6 @@ import org.app.glimpse.pressentation.components.ChatCard
 import org.app.glimpse.pressentation.components.FriendAdd
 import org.app.glimpse.pressentation.components.UserPlacemark
 
-@SuppressLint("LocalContextResourcesRead")
 @Composable
 fun MainScreen(
     paddingValues: PaddingValues,
@@ -130,54 +131,32 @@ fun MainScreen(
 
     val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val isServiceRun by apiViewModel.isServiceRun.collectAsState()
-
-    LaunchedEffect(isServiceRun) {
-        if(!isServiceRun) {
-            if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
-                if(!hasFinePermission){
-                    permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                }
-                if(!hasBackPermission) {
-                    permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                }
-                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    if (!hasNotifPermission) {
-                        permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                }
-            } else {
-                val inta = Intent(context, LocationTrackingService::class.java).apply {
-                    action = LocationTrackingService.Actions.START_TRACKING.name
-                }
-                ContextCompat.startForegroundService(context, inta)
+    LaunchedEffect(Unit) {
+        if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
+            if(!hasFinePermission){
+                permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             }
+            if(!hasBackPermission) {
+                permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (!hasNotifPermission) {
+                    permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            (context.applicationContext as MyApplication).webSocketCnn?.cancel()
+            (context.applicationContext as MyApplication).webSocketCnn = apiViewModel.webSocketCnn
+            val inta = Intent(context, LocationTrackingService::class.java).apply {
+                action = Actions.START_TRACKING.name
+            }
+            ContextCompat.startForegroundService(context, inta)
         }
     }
 
     val mapState by apiViewModel.mapState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        if(apiViewModel.isFirst){
-            mapView.apply {
-                mapWindow.map.move(
-                    CameraPosition(
-                        Point(you.latitude,you.longitude),
-                        18f,
-                        0f,
-                        0f
-                    ),
-                    Animation(Animation.Type.SMOOTH,2f)
-                )
-                {}
-            }
-            apiViewModel.isFirst = false
-        } else {
-            mapView.apply { mapWindow.map.move(mapState) }
-        }
-    }
-
-    LaunchedEffect(apiState) {
+    LaunchedEffect(apiState,you) {
         if(apiState is ApiState.Success){
             mapView.apply {
                 val activity = context as Activity
@@ -221,6 +200,35 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(you.latitude, you.longitude) {
+        mapView.apply { mapWindow.map.move(
+            CameraPosition(Point(
+                you.latitude,
+                 you.longitude
+            ),mapState.zoom,mapState.azimuth,mapState.tilt)
+        ) }
+    }
+
+    LaunchedEffect(Unit) {
+        if(apiViewModel.isFirst){
+            mapView.apply {
+                mapWindow.map.move(
+                    CameraPosition(
+                        Point(you.latitude,you.longitude),
+                        18f,
+                        0f,
+                        0f
+                    ),
+                    Animation(Animation.Type.SMOOTH,2f)
+                )
+                {}
+            }
+            apiViewModel.isFirst = false
+        } else {
+            mapView.apply { mapWindow.map.move(mapState) }
+        }
+    }
+
     Box(
         modifier = Modifier.fillMaxSize()
     ){
@@ -236,11 +244,10 @@ fun MainScreen(
         ) {
             Button(
                 onClick = {
-                    val userData = (apiState as ApiState.Success).data as User
                     mapView.apply {
                         mapWindow.map.move(
                             CameraPosition(
-                                Point(userData.latitude, userData.longitude),
+                                Point(you.latitude, you.longitude),
                                 18.0f,
                                 0f,
                                 0f,
@@ -341,13 +348,12 @@ fun MainScreen(
                                     modifier = Modifier.padding(16.dp)
                                 )
                                 if (apiState is ApiState.Success) {
-                                    val userData = (apiState as ApiState.Success).data as User
-                                    if (userData.friends.isNotEmpty()) {
+                                    if (you.friendsList.isNotEmpty()) {
                                         LazyColumn(
                                             verticalArrangement = Arrangement.spacedBy(12.dp),
                                             contentPadding = PaddingValues(12.dp)
                                         ) {
-                                            items(userData.friends) {
+                                            items(you.friendsList) {
                                                 ChatCard(
                                                     friend = it,
                                                     onLocation = {
@@ -501,6 +507,8 @@ fun MainScreen(
             ){
                 Button(
                     onClick = {
+                        val inta = Intent(context, LocationTrackingService::class.java).apply { action = Actions.STOP_TRACKING.name }
+                        ContextCompat.startForegroundService(context, inta)
                         navController.navigate(Route.Login.route)
                         apiViewModel.setRoute(Route.Login.route)
                         apiViewModel.isFirst = true

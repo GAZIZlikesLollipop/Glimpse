@@ -1,5 +1,6 @@
 package org.app.glimpse.pressentation.screen
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.location.Address
@@ -92,6 +93,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -99,6 +101,8 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.valentinilk.shimmer.shimmer
 import org.app.glimpse.R
 import org.app.glimpse.Route
+import org.app.glimpse.data.LocationTrackingService
+import org.app.glimpse.data.LocationTrackingService.Actions
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 import org.app.glimpse.data.network.FriendUser
@@ -539,6 +543,8 @@ fun ProfileScreen(
                                             .clickable {
                                                 when (it) {
                                                     settings[1] -> {
+                                                        val inta = Intent(context, LocationTrackingService::class.java).apply { action = Actions.STOP_TRACKING.name }
+                                                        ContextCompat.startForegroundService(context, inta)
                                                         navController.navigate(Route.Login.route)
                                                         apiViewModel.setRoute(Route.Login.route)
                                                         apiViewModel.isFirst = true
@@ -598,6 +604,8 @@ fun ProfileScreen(
                                     Button(
                                         onClick = {
                                             isDeleteAccount = false
+                                            val inta = Intent(context, LocationTrackingService::class.java).apply { action = Actions.STOP_TRACKING.name }
+                                            ContextCompat.startForegroundService(context, inta)
                                             navController.navigate(Route.Login.route)
                                             apiViewModel.deleteAccount()
                                         },
@@ -793,7 +801,7 @@ fun ProfileScreen(
                                     avatarField = null
                                     extField = ""
                                 },
-                                enabled = (loginField.isNotBlank() || passwordField.isNotBlank() || aboutField.isNotBlank() || avatarField != null) && apiState !is ApiState.Loading,
+                                enabled = loginField.isNotBlank() || passwordField.isNotBlank() || aboutField.isNotBlank() || avatarField != null,
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                             ) {
                                 Text(

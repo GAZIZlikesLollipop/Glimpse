@@ -1,30 +1,28 @@
 package org.app.glimpse.data
 
-import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
+import android.location.Location
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import io.ktor.websocket.Frame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.app.glimpse.MyApplication
 import org.app.glimpse.R
 import org.app.glimpse.data.network.UpdateUser
@@ -34,35 +32,49 @@ import org.app.glimpse.data.repository.UserPreferencesRepository
 
 class LocationTrackingService: Service() {
 
+    private var isTracking = false
     val scope = CoroutineScope(Dispatchers.IO+ SupervisorJob())
     private lateinit var apiRepository: ApiRepository
     private lateinit var userPreferencesRepository: UserPreferencesRepository
     private lateinit var userDataRepository: UserDataRepository
     private lateinit var fusedClient: FusedLocationProviderClient
+    private lateinit var applicationContext: MyApplication
     private val callback = object:  LocationCallback() {
         var latitude = 0.0
         var longitude = 0.0
         override fun onLocationResult(p0: LocationResult) {
-            latitude = p0.lastLocation?.latitude ?: latitude
-            longitude = p0.lastLocation?.longitude ?: longitude
-            scope.launch {
-                try {
-                    userDataRepository.setUserData(
-                        userDataRepository.userData.first().toBuilder()
-                            .setLatitude(latitude)
-                            .setLongitude(longitude)
-                            .build()
-                    )
-                    apiRepository.updateUserData(
-                        userPreferencesRepository.token.first(),
-                        UpdateUser(
-                            userDataRepository.userData.first().name,
-                            latitude = latitude,
-                            longitude = longitude
-                        )
-                    )
-                } catch(e: Exception) {
-                    Log.e("Update",e.localizedMessage ?: "")
+            val user = runBlocking {
+                userDataRepository.userData.first()
+            }
+            val location = p0.lastLocation
+            if(location != null){
+                val res = FloatArray(1)
+                Location.distanceBetween(user.latitude,user.longitude,location.latitude,location.longitude,res)
+                if(res[0] <= 5.0f){
+                    return
+                } else {
+                    latitude = location.latitude
+                    longitude = location.longitude
+                    scope.launch {
+                        try {
+                            userDataRepository.setUserData(
+                                userDataRepository.userData.first().toBuilder()
+                                    .setLatitude(latitude)
+                                    .setLongitude(longitude)
+                                    .build()
+                            )
+                            apiRepository.updateUserData(
+                                userPreferencesRepository.token.first(),
+                                UpdateUser(
+                                    latitude = latitude,
+                                    longitude = longitude
+                                )
+                            )
+                            applicationContext.webSocketCnn!!.send(Frame.Text(""))
+                        } catch(e: Exception) {
+                            Log.e("Tracking",e.localizedMessage ?: "")
+                        }
+                    }
                 }
             }
         }
@@ -70,6 +82,7 @@ class LocationTrackingService: Service() {
 
     override fun onCreate() {
         super.onCreate()
+        applicationContext = (application as MyApplication)
         apiRepository = (application as MyApplication).apiRepository
         userPreferencesRepository = (application as MyApplication).userPreferencesRepository
         userDataRepository = (application as MyApplication).userDataRepository
@@ -83,14 +96,20 @@ class LocationTrackingService: Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when(intent?.action){
             Actions.STOP_TRACKING.name -> {
-                scope.launch {
-                    userPreferencesRepository.toggleServiceRun(false)
+                if(isTracking){
+                    isTracking = false
+                    fusedClient.removeLocationUpdates(callback)
+                    scope.cancel()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
                 }
-                fusedClient.removeLocationUpdates(callback)
-                scope.cancel()
-                stopSelf()
             }
-            Actions.START_TRACKING.name -> startLocationUpdates()
+            Actions.START_TRACKING.name -> {
+                if(!isTracking) {
+                    startLocationUpdates()
+                    isTracking = true
+                }
+            }
         }
         return START_STICKY
     }
@@ -115,27 +134,15 @@ class LocationTrackingService: Service() {
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
             )
+            .setAutoCancel(false)
+            .setOngoing(true)
             .build()
         return notification
     }
 
     private fun startLocationUpdates(){
-        val context = this
-        val hasFinePerm = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val hasBackPerm = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
         startForeground(1,buildNotification())
         scope.launch {
-            userPreferencesRepository.toggleServiceRun(true)
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val hasNotifPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                while(!hasBackPerm || !hasFinePerm || !hasNotifPerm) {
-                    delay (1000)
-                }
-            } else {
-                while(!hasBackPerm || !hasFinePerm) {
-                    delay (1000)
-                }
-            }
             val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).build()
             fusedClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
         }
@@ -146,9 +153,6 @@ class LocationTrackingService: Service() {
     override fun onDestroy() {
         super.onDestroy()
         fusedClient.removeLocationUpdates(callback)
-        scope.launch {
-            userPreferencesRepository.toggleServiceRun(false)
-        }
         scope.cancel()
     }
 }

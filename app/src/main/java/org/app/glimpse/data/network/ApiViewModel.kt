@@ -80,13 +80,6 @@ class ApiViewModel(
             ""
         )
 
-    val isServiceRun = userPreferencesRepository.isServiceRun
-        .stateIn(
-            viewModelScope,
-            SharingStarted.Eagerly,
-            false
-        )
-
     val startRoute = userPreferencesRepository.startRoute
         .stateIn(
             viewModelScope,
@@ -369,7 +362,6 @@ class ApiViewModel(
                 setUserData()
             }
             catch(_: ClientRequestException) {
-                Log.d("OWNDATA", "YES SURE YES SURE")
                 setUserData()
                 callback()
                 clearData()
@@ -387,9 +379,7 @@ class ApiViewModel(
                             _userData.value = ApiState.Success(it)
                         }
                     },
-                    {
-                        webSocketCnn = it
-                    }
+                    { webSocketCnn = it }
                 )
             } catch (e: Exception){
                 Log.e("WEBSOCKET",e.localizedMessage ?: "")
@@ -457,7 +447,10 @@ class ApiViewModel(
         }
     }
     private val _mapState = MutableStateFlow(
-        CameraPosition(Point(41.311286, 69.279755),15f,0f,0f)
+        CameraPosition(Point(
+            if(you.value.latitude == 0.0) 41.311286 else you.value.latitude,
+            if(you.value.longitude == 0.0) 69.279755 else you.value.longitude
+        ),15f,0f,0f)
     )
     val mapState = _mapState.asStateFlow()
     fun editMapState(state: CameraPosition){

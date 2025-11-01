@@ -3,7 +3,6 @@
 package org.app.glimpse.pressentation.screen
 
 import android.Manifest
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -73,7 +72,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -82,7 +80,6 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import org.app.glimpse.R
 import org.app.glimpse.Route
-import org.app.glimpse.data.LocationTrackingService
 import org.app.glimpse.data.network.ApiState
 import org.app.glimpse.data.network.ApiViewModel
 
@@ -390,12 +387,6 @@ fun RegisterScreen(
                                 location.longitude
                             )
                         }
-                        if(apiState is ApiState.Success) {
-                            val inta = Intent(context, LocationTrackingService::class.java).apply {
-                                action = LocationTrackingService.Actions.START_TRACKING.name
-                            }
-                            ContextCompat.startForegroundService(context, inta)
-                        }
                     }
                 },
                 enabled = loginField.isNotBlank() && passwordField.isNotBlank() && aboutField.isNotBlank() && apiState !is ApiState.Loading && avatarField != null,
@@ -499,7 +490,6 @@ fun LoginScreen(
     var passwordField by rememberSaveable { mutableStateOf("") }
     val apiState by apiViewModel.userData.collectAsState()
     var isShow by rememberSaveable { mutableStateOf(false) }
-    val context = LocalContext.current
     val permissionRequest = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {}
@@ -658,12 +648,6 @@ fun LoginScreen(
                     }
                 } else {
                     apiViewModel.signIn(loginField,passwordField)
-                    if(apiState is ApiState.Success) {
-                        val inta = Intent(context, LocationTrackingService::class.java).apply {
-                            action = LocationTrackingService.Actions.START_TRACKING.name
-                        }
-                        ContextCompat.startForegroundService(context,inta)
-                    }
                 }
             },
             enabled = loginField.isNotBlank() && passwordField.isNotBlank() && apiState !is ApiState.Loading,

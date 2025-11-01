@@ -27,11 +27,10 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import org.app.glimpse.R
-import org.app.glimpse.data.network.FriendUser
 
 @Composable
 fun ChatCard(
-    friend: FriendUser,
+    friend: org.app.glimpse.FriendUser,
     onLocation: () -> Unit,
     onChat: () -> Unit,
     onProfile: () -> Unit

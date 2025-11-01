@@ -71,9 +71,11 @@ fun UserPlacemark(
                 .clip(RoundedCornerShape(50.dp)),
             contentScale = ContentScale.Crop,
             onSuccess = {
-                userView.post {
-                    val vp = ViewProvider(userView, true)
-                    placemark.setView(vp) { root.post { root.removeView(userView) } }
+                if(placemark.isValid){
+                    userView.post {
+                        val vp = ViewProvider(userView, true)
+                        placemark.setView(vp) { root.post { root.removeView(userView) } }
+                    }
                 }
             }
         )

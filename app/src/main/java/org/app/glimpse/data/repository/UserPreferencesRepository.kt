@@ -1,7 +1,6 @@
 package org.app.glimpse.data.repository
 
 import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -12,11 +11,9 @@ import org.app.glimpse.Route
 interface UserPreferences {
     val token: Flow<String>
     val startRoute: Flow<String>
-    val isServiceRun: Flow<Boolean>
     val userLang: Flow<String>
     suspend fun setToken(token: String)
     suspend fun setStartRoute(route: String)
-    suspend fun toggleServiceRun(bool: Boolean)
     suspend fun setUserLang(lang: String)
 }
 
@@ -32,10 +29,6 @@ class UserPreferencesRepository(context: Context): UserPreferences {
         it[stringPreferencesKey("start_route")] ?: Route.Login.route
     }
 
-    override val isServiceRun: Flow<Boolean> = dataStore.data.map {
-        it[booleanPreferencesKey("is_service_run")] ?: false
-    }
-
     override val userLang: Flow<String> = dataStore.data.map {
         it[stringPreferencesKey("user_lang")] ?: "en"
     }
@@ -43,12 +36,6 @@ class UserPreferencesRepository(context: Context): UserPreferences {
     override suspend fun setUserLang(lang: String) {
         dataStore.edit {
             it[stringPreferencesKey("user_lang")] = lang
-        }
-    }
-
-    override suspend fun toggleServiceRun(bool: Boolean) {
-        dataStore.edit {
-            it[booleanPreferencesKey("is_service_run")] = bool
         }
     }
 

@@ -26,13 +26,5 @@ object ApiService {
         install(ContentNegotiation){
             json(json)
         }
-//        install(Logging){
-//            logger = object : Logger {
-//                override fun log(message: String) {
-//                    Log.d("HttpClient",message)
-//                }
-//            }
-//            level = LogLevel.ALL
-//        }
     }
 }
