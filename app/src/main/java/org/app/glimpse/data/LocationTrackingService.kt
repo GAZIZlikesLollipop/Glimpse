@@ -1,14 +1,18 @@
 package org.app.glimpse.data
 
+import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -38,7 +42,6 @@ class LocationTrackingService: Service() {
     private lateinit var userPreferencesRepository: UserPreferencesRepository
     private lateinit var userDataRepository: UserDataRepository
     private lateinit var fusedClient: FusedLocationProviderClient
-    private lateinit var applicationContext: MyApplication
     private val callback = object:  LocationCallback() {
         var latitude = 0.0
         var longitude = 0.0
@@ -70,7 +73,7 @@ class LocationTrackingService: Service() {
                                     longitude = longitude
                                 )
                             )
-                            applicationContext.webSocketCnn!!.send(Frame.Text(""))
+                            (application as MyApplication).webSocketCnn!!.send(Frame.Text(""))
                         } catch(e: Exception) {
                             Log.e("Tracking",e.localizedMessage ?: "")
                         }
@@ -82,7 +85,6 @@ class LocationTrackingService: Service() {
 
     override fun onCreate() {
         super.onCreate()
-        applicationContext = (application as MyApplication)
         apiRepository = (application as MyApplication).apiRepository
         userPreferencesRepository = (application as MyApplication).userPreferencesRepository
         userDataRepository = (application as MyApplication).userDataRepository
@@ -106,8 +108,20 @@ class LocationTrackingService: Service() {
             }
             Actions.START_TRACKING.name -> {
                 if(!isTracking) {
-                    startLocationUpdates()
-                    isTracking = true
+                    val fine = ContextCompat.checkSelfPermission(application, Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED
+                    val back = ContextCompat.checkSelfPermission(application, Manifest.permission.ACCESS_BACKGROUND_LOCATION)== PackageManager.PERMISSION_GRANTED
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                        val notif = ContextCompat.checkSelfPermission(application, Manifest.permission.POST_NOTIFICATIONS)== PackageManager.PERMISSION_GRANTED
+                        if(fine && back && notif){
+                            startLocationUpdates()
+                            isTracking = true
+                        }
+                    } else {
+                        if(fine && back){
+                            startLocationUpdates()
+                            isTracking = true
+                        }
+                    }
                 }
             }
         }
@@ -141,10 +155,14 @@ class LocationTrackingService: Service() {
     }
 
     private fun startLocationUpdates(){
-        startForeground(1,buildNotification())
-        scope.launch {
-            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).build()
-            fusedClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        val fine = ContextCompat.checkSelfPermission(application, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(application, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if(fine || coarse){
+            startForeground(1,buildNotification())
+            scope.launch {
+                val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000).build()
+                fusedClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
+            }
         }
     }
 

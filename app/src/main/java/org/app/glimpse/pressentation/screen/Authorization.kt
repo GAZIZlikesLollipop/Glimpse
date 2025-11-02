@@ -3,6 +3,7 @@
 package org.app.glimpse.pressentation.screen
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -72,6 +73,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -126,9 +128,7 @@ fun RegisterScreen(
 
     val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
-
-    val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
+    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION).status.isGranted
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -363,29 +363,55 @@ fun RegisterScreen(
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
-                        if(!hasFinePermission){
-                            permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                        }
-                        if(!hasBackPermission) {
-                            permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                        }
-                        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                        val hasNotifPermission = ActivityCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                        if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
+                            if(!hasFinePermission){
+                                permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            }
+                            if(!hasBackPermission) {
+                                permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            }
                             if (!hasNotifPermission) {
                                 permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
+                        } else {
+                            if(ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
+                                LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
+                                    apiViewModel.signUp(
+                                        loginField,
+                                        passwordField,
+                                        aboutField,
+                                        avatarField,
+                                        extField,
+                                        location.latitude,
+                                        location.longitude
+                                    )
+                                }
+                            }
                         }
                     } else {
-                        LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
-                            apiViewModel.signUp(
-                                loginField,
-                                passwordField,
-                                aboutField,
-                                avatarField,
-                                extField,
-                                location.latitude,
-                                location.longitude
-                            )
+                        if(!hasFinePermission || !hasBackPermission){
+                            if(!hasFinePermission){
+                                permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            }
+                            if(!hasBackPermission) {
+                                permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            }
+                        } else {
+                            if(ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
+                                LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
+                                    apiViewModel.signUp(
+                                        loginField,
+                                        passwordField,
+                                        aboutField,
+                                        avatarField,
+                                        extField,
+                                        location.latitude,
+                                        location.longitude
+                                    )
+                                }
+                            }
                         }
                     }
                 },
@@ -496,12 +522,12 @@ fun LoginScreen(
 
     val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
-
-    val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
+    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION).status.isGranted
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasNotifPermission = ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (!hasNotifPermission) {
                 permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
@@ -634,20 +660,32 @@ fun LoginScreen(
         Button(
             onClick = {
                 focusManager.clearFocus()
-                if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
-                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                    val hasNotifPermission = ActivityCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                    if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
+                        if(!hasFinePermission){
+                            permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+                        if(!hasBackPermission) {
+                            permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        }
                         if (!hasNotifPermission) {
                             permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
-                    }
-                    if(!hasFinePermission){
-                        permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                    }
-                    if(!hasBackPermission) {
-                        permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    } else {
+                        apiViewModel.signIn(loginField,passwordField)
                     }
                 } else {
-                    apiViewModel.signIn(loginField,passwordField)
+                    if(!hasFinePermission || !hasBackPermission){
+                        if(!hasFinePermission){
+                            permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+                        if(!hasBackPermission) {
+                            permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        }
+                    } else {
+                        apiViewModel.signIn(loginField,passwordField)
+                    }
                 }
             },
             enabled = loginField.isNotBlank() && passwordField.isNotBlank() && apiState !is ApiState.Loading,

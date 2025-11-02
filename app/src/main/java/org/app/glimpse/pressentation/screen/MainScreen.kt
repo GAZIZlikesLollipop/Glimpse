@@ -5,6 +5,7 @@ package org.app.glimpse.pressentation.screen
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
@@ -67,6 +68,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.doOnAttach
 import androidx.navigation.NavController
@@ -97,7 +99,6 @@ fun MainScreen(
     navController: NavController,
     apiViewModel: ApiViewModel
 ){
-    val context = LocalContext.current
     val windowInfo = LocalWindowInfo.current
     val isDarkTheme = isSystemInDarkTheme()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -105,6 +106,7 @@ fun MainScreen(
     var isAdd by rememberSaveable { mutableStateOf(false) }
     val apiState by apiViewModel.userData.collectAsState()
     val you by apiViewModel.you.collectAsState()
+    val context = LocalContext.current
     val mapView = remember { MapView(context) }
 
     LaunchedEffect(Unit) {
@@ -127,30 +129,46 @@ fun MainScreen(
 
     val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
-    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
-
-    val hasNotifPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
+    val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION).status.isGranted
 
     LaunchedEffect(Unit) {
-        if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
-            if(!hasFinePermission){
-                permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-            if(!hasBackPermission) {
-                permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-            }
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasNotifPermission = ActivityCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+            if(!hasFinePermission || !hasBackPermission || !hasNotifPermission){
+                if(!hasFinePermission){
+                    permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                if(!hasBackPermission) {
+                    permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
                 if (!hasNotifPermission) {
                     permissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+            } else {
+                (context.applicationContext as MyApplication).webSocketCnn?.cancel()
+                (context.applicationContext as MyApplication).webSocketCnn = apiViewModel.webSocketCnn
+                val inta = Intent(context, LocationTrackingService::class.java).apply {
+                    action = Actions.START_TRACKING.name
+                }
+                ContextCompat.startForegroundService(context, inta)
             }
         } else {
-            (context.applicationContext as MyApplication).webSocketCnn?.cancel()
-            (context.applicationContext as MyApplication).webSocketCnn = apiViewModel.webSocketCnn
-            val inta = Intent(context, LocationTrackingService::class.java).apply {
-                action = Actions.START_TRACKING.name
+            if(!hasFinePermission || !hasBackPermission){
+                if(!hasFinePermission){
+                    permissionRequest.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                if(!hasBackPermission) {
+                    permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
+            } else {
+                (context.applicationContext as MyApplication).webSocketCnn?.cancel()
+                (context.applicationContext as MyApplication).webSocketCnn = apiViewModel.webSocketCnn
+                val inta = Intent(context, LocationTrackingService::class.java).apply {
+                    action = Actions.START_TRACKING.name
+                }
+                ContextCompat.startForegroundService(context, inta)
             }
-            ContextCompat.startForegroundService(context, inta)
         }
     }
 
@@ -238,7 +256,7 @@ fun MainScreen(
             update = {}
         )
         Column(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp).padding(paddingValues),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).padding(vertical = 12.dp).padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -264,7 +282,7 @@ fun MainScreen(
                     contentColor = MaterialTheme.colorScheme.onBackground
                 ),
                 shape = CircleShape,
-                modifier = Modifier.size((windowInfo.containerSize.width/19).dp)
+                modifier = Modifier.size((windowInfo.containerSize.width/18).dp)
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.navigation),
@@ -277,8 +295,8 @@ fun MainScreen(
                 onClick = { apiViewModel.isChats = true },
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
-                    .width((windowInfo.containerSize.width/20).dp)
-                    .height((windowInfo.containerSize.height/34).dp),
+                    .width((windowInfo.containerSize.width/18).dp)
+                    .height((windowInfo.containerSize.height/32).dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(0.8f),
