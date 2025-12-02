@@ -92,6 +92,7 @@ import org.app.glimpse.data.network.User
 import org.app.glimpse.pressentation.components.ChatCard
 import org.app.glimpse.pressentation.components.FriendAdd
 import org.app.glimpse.pressentation.components.UserPlacemark
+import org.app.glimpse.pressentation.components.UserPlacemarkBox
 
 @Composable
 fun MainScreen(
@@ -109,18 +110,18 @@ fun MainScreen(
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
 
+    LaunchedEffect(isDarkTheme) {
+        mapView.apply { mapWindow.map.apply { isNightModeEnabled = isDarkTheme } }
+    }
+
     LaunchedEffect(Unit) {
-        apiViewModel.getOwnData({
+        apiViewModel.getOwnData {
             navController.navigate(Route.Login.route)
             apiViewModel.setRoute(Route.Login.route)
-        })
+        }
         if(apiViewModel.webSocketCnn == null){
             apiViewModel.startWebSocket()
         }
-    }
-
-    LaunchedEffect(isDarkTheme) {
-        mapView.apply { mapWindow.map.apply { isNightModeEnabled = if(isDarkTheme) true else false } }
     }
 
     val permissionRequest = rememberLauncherForActivityResult(
@@ -130,6 +131,8 @@ fun MainScreen(
     val hasFinePermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION).status.isGranted
 
     val hasBackPermission = rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION).status.isGranted
+
+    val mapState by apiViewModel.mapState.collectAsState()
 
     LaunchedEffect(Unit) {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -162,72 +165,16 @@ fun MainScreen(
                     permissionRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
             } else {
-                (context.applicationContext as MyApplication).webSocketCnn?.cancel()
-                (context.applicationContext as MyApplication).webSocketCnn = apiViewModel.webSocketCnn
-                val inta = Intent(context, LocationTrackingService::class.java).apply {
-                    action = Actions.START_TRACKING.name
-                }
-                ContextCompat.startForegroundService(context, inta)
-            }
-        }
-    }
-
-    val mapState by apiViewModel.mapState.collectAsState()
-
-    LaunchedEffect(apiState,you) {
-        if(apiState is ApiState.Success){
-            mapView.apply {
-                val activity = context as Activity
-                val root = activity.findViewById<ViewGroup>(android.R.id.content)
-
-                val userView = ComposeView(context).apply {
-                    translationX = -10_000f // offscreen, но прикреплён к окну
-                    setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
-                }
-
-                (userView.parent as? ViewGroup)?.removeView(userView)
-
-                root.addView(userView)
-
-                if(!apiViewModel.isFirst) {
-                    mapWindow.map.mapObjects.clear()
-                }
-
-                val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry =
-                    Point(you.latitude, you.longitude)
-                }
-
-                userView.doOnAttach {
-                    userView.setContent { UserPlacemark(you.avatar,you.name,userView,placemark,root) }
-                }
-
-                for(friend in you.friendsList){
-                    val friendView = ComposeView(context).apply {
-                        translationX = -10_000f // offscreen, но прикреплён к окну
-                        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                if(apiState is ApiState.Success) {
+                    (context.applicationContext as MyApplication).webSocketCnn?.cancel()
+                    (context.applicationContext as MyApplication).webSocketCnn = apiViewModel.webSocketCnn
+                    val inta = Intent(context, LocationTrackingService::class.java).apply {
+                        action = Actions.START_TRACKING.name
                     }
-                    (friendView.parent as? ViewGroup)?.removeView(friendView)
-
-                    root.addView(friendView)
-                    val friendPlacemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(friend.latitude,friend.longitude)}
-                    friendView.doOnAttach {
-                        friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,friendPlacemark,root) }
-                    }
+                    ContextCompat.startForegroundService(context, inta)
                 }
             }
         }
-    }
-
-    LaunchedEffect(you.latitude, you.longitude) {
-        mapView.apply { mapWindow.map.move(
-            CameraPosition(Point(
-                you.latitude,
-                 you.longitude
-            ),mapState.zoom,mapState.azimuth,mapState.tilt)
-        ) }
-    }
-
-    LaunchedEffect(Unit) {
         if(apiViewModel.isFirst){
             mapView.apply {
                 mapWindow.map.move(
@@ -244,6 +191,78 @@ fun MainScreen(
             apiViewModel.isFirst = false
         } else {
             mapView.apply { mapWindow.map.move(mapState) }
+        }
+    }
+
+    LaunchedEffect(apiState,you) {
+        if(apiState is ApiState.Success){
+            mapView.apply {
+                val activity = context as Activity
+                val root = activity.findViewById<ViewGroup>(android.R.id.content)
+
+                val boxView = ComposeView(context).apply {
+                    translationX = -10_000f // offscreen, но прикреплён к окну
+                    setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                }
+                val userView = ComposeView(context).apply {
+                    translationX = -10_000f // offscreen, но прикреплён к окну
+                    setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                }
+                val boxParent = boxView.parent
+                if(boxParent is ViewGroup){
+                    boxParent.removeView(boxView)
+                }
+                val userParent = userView.parent
+                if(userParent is ViewGroup){
+                    userParent.removeView(userView)
+                }
+
+                root.addView(boxView)
+                root.addView(userView)
+
+                if(!apiViewModel.isFirst) {
+                    mapWindow.map.mapObjects.clear()
+                }
+
+                val placemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry =
+                    Point(you.latitude, you.longitude)
+                }
+
+                boxView.doOnAttach {
+                    boxView.setContent {
+                        UserPlacemarkBox(you.name,boxView,placemark,root)
+                    }
+                }
+
+                userView.doOnAttach {
+                    userView.setContent {
+                        UserPlacemark(you.avatar,you.name,userView, placemark,root)
+                    }
+                }
+
+                for(friend in you.friendsList){
+                    val friendBoxView = ComposeView(context).apply {
+                        translationX = -10_000f // offscreen, но прикреплён к окну
+                        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                    }
+                    val friendView = ComposeView(context).apply {
+                        translationX = -10_000f // offscreen, но прикреплён к окну
+                        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+                    }
+                    (friendBoxView.parent as? ViewGroup)?.removeView(friendBoxView)
+                    (friendView.parent as? ViewGroup)?.removeView(friendView)
+
+                    root.addView(friendBoxView)
+                    root.addView(friendView)
+                    val friendPlacemark = mapWindow.map.mapObjects.addPlacemark().apply { geometry = Point(friend.latitude,friend.longitude)}
+                    friendBoxView.doOnAttach {
+                        friendBoxView.setContent { UserPlacemarkBox(friend.name,friendBoxView,friendPlacemark,root) }
+                    }
+                    friendView.doOnAttach {
+                        friendView.setContent { UserPlacemark(friend.avatar,friend.name,friendView,friendPlacemark,root) }
+                    }
+                }
+            }
         }
     }
 
@@ -396,6 +415,7 @@ fun MainScreen(
                                                         }
                                                     },
                                                     onChat = {
+                                                        apiViewModel.getChatMessages(it.id)
                                                         apiViewModel.isChats = false
                                                         navController.navigate(
                                                             Route.Chat.createRoute(

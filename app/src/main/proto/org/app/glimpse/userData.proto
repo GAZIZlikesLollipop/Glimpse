@@ -3,15 +3,6 @@ syntax = "proto3";
 option java_package = "org.app.glimpse";
 option java_multiple_files = true;
 
-message Message {
-  int64 id = 1;
-  string content = 2;
-  optional int64 senderId = 4;
-  optional int64 receivedId = 5;
-  int64 createdAt = 6;
-  int64 updatedAt = 7;
-}
-
 message FriendUser {
   int64 id = 1;
   string name = 2;
@@ -33,9 +24,7 @@ message UserData {
   string avatar = 5;
   double latitude = 6;
   double longitude = 7;
-  repeated Message sentMessages = 8;
-  repeated Message receivedMessages = 9;
-  int64 createdAt = 10;
-  int64 updatedAt = 11;
-  repeated FriendUser friends = 12;
+  int64 createdAt = 8;
+  int64 updatedAt = 9;
+  repeated FriendUser friends = 10;
 }

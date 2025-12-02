@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
     id("com.google.protobuf") version "0.9.5"
 }
 
@@ -72,15 +72,14 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.datetime) // Актуальная версия kotlinx-datetime
     implementation(libs.ktor.client.websockets)
-    // Опционально: Логирование (очень полезно для отладки сетевых запросов)
-    implementation("io.ktor:ktor-client-logging:3.2.3")
-    implementation(libs.compose.shimmer)
     //Protobuf
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.datastore)
     implementation(libs.protobuf.javalite)
     // Other
     implementation(libs.accompanist.permissions)
+    implementation(libs.compose.shimmer)
+    implementation(libs.androidx.compose.material.icons.extended)
 }
 
 protobuf {
@@ -91,7 +90,7 @@ protobuf {
         all().forEach {
             it.builtins {
                 create("java"){
-                   option("lite")
+                    option("lite")
                 }
             }
         }

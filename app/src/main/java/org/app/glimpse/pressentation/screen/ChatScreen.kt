@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
@@ -76,8 +77,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.navigation.NavController
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
 import org.app.glimpse.R
 import org.app.glimpse.data.network.ApiState
@@ -106,11 +109,11 @@ fun ChatScreen(
     }
     val apiState by apiViewModel.userData.collectAsState()
     val context = LocalContext.current
+    val chatState by apiViewModel.chatMessages.collectAsState()
     if(apiState is ApiState.Success) {
         val focusManager = LocalFocusManager.current
         val scope = rememberCoroutineScope()
         val userData = (apiState as ApiState.Success).data as User
-        val rawMessages = (userData.sentMessages.filter{it.receiverId == friendId}+userData.receivedMessages.filter{it.senderId == friendId}).sortedBy { it.createdAt }
         val windowInfo = LocalWindowInfo.current
         val data = userData.friends.find { it.id == friendId }!!
         val time = Instant.ofEpochMilli(data.lastOnline).atZone(ZoneId.systemDefault()).toLocalDateTime()
@@ -140,15 +143,34 @@ fun ChatScreen(
         var isUpdate by rememberSaveable { mutableStateOf(false) }
         val focusRequester = remember { FocusRequester() }
 
+        val listState = rememberLazyListState()
         LaunchedEffect(Unit) {
-            messages.putAll(groupingMessages(rawMessages))
+            if(apiViewModel.webSocketCnn == null){
+                apiViewModel.startWebSocket()
+            }
+            if(messages.isNotEmpty()) {
+                scope.launch {
+                    listState.animateScrollToItem(
+                        messages.toList().reversed().last().second.lastIndex
+                    )
+                }
+            }
         }
 
-        val listState = rememberLazyListState()
-        LaunchedEffect(apiState) {
-            val msgs = (userData.sentMessages.filter{it.receiverId == friendId}+userData.receivedMessages.filter{it.senderId == friendId}).sortedBy { it.createdAt }
-            messages.clear()
-            messages.putAll(groupingMessages(msgs))
+        LaunchedEffect(chatState) {
+            if(chatState is ApiState.Success){
+                val rawMessages = (chatState as ApiState.Success).data as List<Message>
+                val msgs = rawMessages.sortedBy { it.createdAt }
+                messages.clear()
+                messages.putAll(groupingMessages(msgs))
+                if(messages.isNotEmpty()) {
+                    scope.launch {
+                        listState.animateScrollToItem(
+                            messages.toList().reversed().last().second.lastIndex
+                        )
+                    }
+                }
+            }
         }
 
         Box(Modifier.fillMaxSize()){
@@ -164,7 +186,7 @@ fun ChatScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = data.avatar,
                         imageLoader = ImageLoader.Builder(context)
                             .components { add(OkHttpNetworkFetcherFactory(createUnsafeOkHttpClient())) }
@@ -173,7 +195,16 @@ fun ChatScreen(
                         contentScale = ContentScale.FillBounds,
                         modifier = Modifier
                             .size((windowInfo.containerSize.width / 22).dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(20.dp)),
+                        loading = {
+                            Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                        },
+                        error = {
+                            Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                        },
+                        success = {
+                            SubcomposeAsyncImageContent()
+                        }
                     )
                     Column {
                         Text(
@@ -210,111 +241,115 @@ fun ChatScreen(
 
                 HorizontalDivider(thickness = 2.dp, color = MaterialTheme.colorScheme.onBackground.copy(0.35f))
 
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f)
-                ) {
-                    items(messages.toList().reversed()) { (date, mgs) ->
-                        Text(
-                            date,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        mgs.forEach { msg ->
-                            val createdAt = LocalDateTime.ofInstant(
-                                Instant.ofEpochMilli(msg.createdAt),
-                                ZoneId.systemDefault()
+                if(messages.isNotEmpty()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth().weight(1f)
+                    ) {
+                        items(messages.toList().reversed()) { (date, mgs) ->
+                            Text(
+                                date,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onBackground.copy(0.75f)
                             )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onLongPress = {
-                                                pressOffset = it
-                                                currInd = msg.id
-                                                showPopUp = true
-                                            },
-                                        )
-                                    }
-                            ) {
-                                if (msg.senderId == userData.id) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
-                                    ) {
-                                        Card(
-                                            shape = RoundedCornerShape(
-                                                topStart = 24.dp,
-                                                topEnd = 0.dp,
-                                                bottomEnd = 24.dp,
-                                                bottomStart = 24.dp
-                                            ),
-                                            modifier = Modifier.padding(8.dp),
-                                            colors = CardDefaults.cardColors(
-                                                MaterialTheme.colorScheme.primaryContainer,
-                                                MaterialTheme.colorScheme.onBackground
+                            Spacer(Modifier.height(24.dp))
+                            mgs.forEach { msg ->
+                                val createdAt = LocalDateTime.ofInstant(
+                                    Instant.ofEpochMilli(msg.createdAt),
+                                    ZoneId.systemDefault()
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onLongPress = {
+                                                    pressOffset = it
+                                                    currInd = msg.id
+                                                    showPopUp = true
+                                                },
                                             )
+                                        }
+                                ) {
+                                    if (msg.senderId == userData.id) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
                                         ) {
-                                            Column(
-                                                modifier = Modifier.padding(12.dp),
-                                                horizontalAlignment = Alignment.End
+                                            Card(
+                                                shape = RoundedCornerShape(
+                                                    topStart = 24.dp,
+                                                    topEnd = 0.dp,
+                                                    bottomEnd = 24.dp,
+                                                    bottomStart = 24.dp
+                                                ),
+                                                modifier = Modifier.padding(8.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    MaterialTheme.colorScheme.primaryContainer,
+                                                    MaterialTheme.colorScheme.onBackground
+                                                )
                                             ) {
-                                                Text(msg.content)
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                Column(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    horizontalAlignment = Alignment.End
                                                 ) {
+                                                    Text(msg.content)
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(
+                                                            8.dp
+                                                        )
+                                                    ) {
+                                                        Text(
+                                                            "${createdAt.hour}:${if (createdAt.minute < 10) "0${createdAt.minute}" else createdAt.minute}",
+                                                            color = MaterialTheme.colorScheme.onBackground.copy(
+                                                                0.5f
+                                                            ),
+                                                            style = MaterialTheme.typography.labelLarge
+                                                        )
+                                                        Icon(
+                                                            imageVector = if (msg.id != mgs.last().id || userData.friends.find { it.id == friendId }?.lastOnline!! >= msg.createdAt) ImageVector.vectorResource(
+                                                                R.drawable.done_all
+                                                            ) else Icons.Rounded.Check,
+                                                            contentDescription = "isChecked",
+                                                            tint = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Start
+                                        ) {
+                                            Card(
+                                                shape = RoundedCornerShape(
+                                                    topStart = 0.dp,
+                                                    topEnd = 24.dp,
+                                                    bottomEnd = 24.dp,
+                                                    bottomStart = 24.dp
+                                                ),
+                                                modifier = Modifier.padding(8.dp),
+                                                colors = CardDefaults.cardColors(
+                                                    MaterialTheme.colorScheme.surfaceContainer,
+                                                    MaterialTheme.colorScheme.onBackground
+                                                )
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    horizontalAlignment = Alignment.End
+                                                ) {
+                                                    Text(msg.content)
                                                     Text(
-                                                        "${createdAt.hour}:${if(createdAt.minute < 10) "0${createdAt.minute}" else createdAt.minute}",
+                                                        "${createdAt.hour}:${if (createdAt.minute < 10) "0${createdAt.minute}" else createdAt.minute}",
                                                         color = MaterialTheme.colorScheme.onBackground.copy(
                                                             0.5f
                                                         ),
                                                         style = MaterialTheme.typography.labelLarge
                                                     )
-                                                    Icon(
-                                                        imageVector = if (msg.id != mgs.last().id || userData.friends.find { it.id == friendId }?.lastOnline!! >= msg.createdAt) ImageVector.vectorResource(
-                                                            R.drawable.done_all
-                                                        ) else Icons.Rounded.Check,
-                                                        contentDescription = "isChecked",
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
                                                 }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Start
-                                    ) {
-                                        Card(
-                                            shape = RoundedCornerShape(
-                                                topStart = 0.dp,
-                                                topEnd = 24.dp,
-                                                bottomEnd = 24.dp,
-                                                bottomStart = 24.dp
-                                            ),
-                                            modifier = Modifier.padding(8.dp),
-                                            colors = CardDefaults.cardColors(
-                                                MaterialTheme.colorScheme.surfaceContainer,
-                                                MaterialTheme.colorScheme.onBackground
-                                            )
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(12.dp),
-                                                horizontalAlignment = Alignment.End
-                                            ) {
-                                                Text(msg.content)
-                                                Text(
-                                                    "${createdAt.hour}:${if(createdAt.minute < 10) "0${createdAt.minute}" else createdAt.minute}",
-                                                    color = MaterialTheme.colorScheme.onBackground.copy(
-                                                        0.5f
-                                                    ),
-                                                    style = MaterialTheme.typography.labelLarge
-                                                )
                                             }
                                         }
                                     }
@@ -322,14 +357,32 @@ fun ChatScreen(
                             }
                         }
                     }
-                }
-
-                if(messages.isNotEmpty()){
-                    LaunchedEffect(apiState) {
-                        if(messages.isNotEmpty()) {
-                            scope.launch {
-                                listState.animateScrollToItem(
-                                    messages.toList().reversed().last().second.lastIndex
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Card(
+                            modifier = Modifier.padding(30.dp),
+                            shape = RoundedCornerShape(26.dp),
+                            colors = CardDefaults.cardColors(MaterialTheme.colorScheme.onBackground.copy(0.05f))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ChatBubbleOutline,
+                                    contentDescription = cnt[10],
+                                    tint = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(50.dp)
+                                )
+                                Text(
+                                    cnt[10],
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -357,26 +410,18 @@ fun ChatScreen(
                     ) {
                         Button(
                             onClick = {
-                                if(isUpdate) {
+                                if (isUpdate) {
                                     scope.launch {
-                                        apiViewModel.updateMessage(currInd,chatMessage.text)
-                                        val msgs = rawMessages.toMutableList()
-                                        msgs.set(msgs.indexOf(msgs.find { it.id == currInd }),msgs.find { it.id == currInd }!!.copy(content = chatMessage.text))
-                                        messages.clear()
-                                        messages.putAll(groupingMessages(msgs))
+                                        apiViewModel.updateMessage(currInd, chatMessage.text,friendId)
                                         isUpdate = false
                                         chatMessage = TextFieldValue("")
                                     }
                                 } else {
                                     scope.launch {
-                                        val mesg = apiViewModel.sendMessage(
+                                        apiViewModel.sendMessage(
                                             Message(content = chatMessage.text),
                                             friendId
                                         )
-                                        val msgs = rawMessages.toMutableList()
-                                        msgs.add(mesg.await()!!)
-                                        messages.clear()
-                                        messages.putAll(groupingMessages(msgs))
                                         chatMessage = TextFieldValue("")
                                     }
                                 }
@@ -417,38 +462,41 @@ fun ChatScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.padding(12.dp)
                         ) {
-                            if(rawMessages.find { it.id == currInd }!!.senderId != friendId) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable {
-                                        isUpdate = true
-                                        focusRequester.requestFocus()
-                                        chatMessage = chatMessage.copy(text = userData.sentMessages.find { it.id == currInd }!!.content, TextRange(userData.sentMessages.find { it.id == currInd }!!.content.length))
-                                        showPopUp = false
-                                    },
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Edit,
-                                        contentDescription = cnt[8],
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Text(
-                                        text = cnt[8],
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.W500,
-                                        style = MaterialTheme.typography.titleLarge
-                                    )
+                            if(chatState is ApiState.Success) {
+                                val rawMessages = (chatState as ApiState.Success).data as List<Message>
+                                if (rawMessages.find { it.id == currInd }?.senderId != friendId) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().clickable {
+                                            isUpdate = true
+                                            focusRequester.requestFocus()
+                                            chatMessage =
+                                                chatMessage.copy(
+                                                    text = rawMessages.find { it.id == currInd }!!.content,
+                                                    TextRange(rawMessages.find { it.id == currInd }!!.content.length)
+                                                )
+                                            showPopUp = false
+                                        },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Edit,
+                                            contentDescription = cnt[8],
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = cnt[8],
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.W500,
+                                            style = MaterialTheme.typography.titleLarge
+                                        )
+                                    }
+                                    HorizontalDivider()
                                 }
-                                HorizontalDivider()
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth().clickable {
-                                    apiViewModel.deleteMessage(currInd)
-                                    val msgs = rawMessages.toMutableList()
-                                    msgs.remove(rawMessages.find { it.id == currInd })
-                                    messages.clear()
-                                    messages.putAll(groupingMessages(msgs))
+                                    apiViewModel.deleteMessage(currInd,friendId)
                                     showPopUp = false
                                 },
                                 verticalAlignment = Alignment.CenterVertically,

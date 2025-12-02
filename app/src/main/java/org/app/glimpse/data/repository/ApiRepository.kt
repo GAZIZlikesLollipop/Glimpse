@@ -21,6 +21,7 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.InternalAPI
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
+import org.app.glimpse.BuildConfig
 import org.app.glimpse.data.network.AuthRequest
 import org.app.glimpse.data.network.FriendUser
 import org.app.glimpse.data.network.GeocoderResponse
@@ -29,6 +30,7 @@ import org.app.glimpse.data.network.SignUpUser
 import org.app.glimpse.data.network.UpdateUser
 import org.app.glimpse.data.network.User
 import org.app.glimpse.data.network.Users
+import org.app.glimpse.data.network.WebSocketResponse
 import org.app.glimpse.data.network.json
 import java.io.ByteArrayOutputStream
 import java.util.Locale
@@ -45,7 +47,7 @@ interface ApiRepo {
     suspend fun signUp(data: SignUpUser)
     suspend fun startWebSocket(
         token: String,
-        onReceived: (User) -> Unit,
+        onReceived: (WebSocketResponse) -> Unit,
         onWebSocket: (DefaultClientWebSocketSession) -> Unit
     )
     suspend fun getUserNames(): List<Users>
@@ -73,14 +75,21 @@ interface ApiRepo {
         msg: Message,
         token: String
     )
+    suspend fun getChatMessages(
+       token: String,
+       receiverId: Long
+    ): List<Message>
 }
 
 class ApiRepository(val httpClient: HttpClient): ApiRepo {
-//    val host = "10.0.2.2"
-    val host = "172.30.102.229"
+    val baseURL = BuildConfig.baseURL
+
+    override suspend fun getChatMessages(token: String, receiverId: Long): List<Message> {
+        return httpClient.get("$baseURL/msg/messages/$receiverId") { header("Authorization", "Bearer $token") }.body()
+    }
 
     override suspend fun deleteAccount(token: String) {
-        httpClient.delete("https://$host:8080/api/users") { header("Authorization", "Bearer $token") }
+        httpClient.delete("$baseURL/usr/users") { header("Authorization", "Bearer $token") }
     }
     override suspend fun getLocation(
         longitude: Double,
@@ -93,7 +102,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
 
     override suspend fun getUserData(token: String): User? {
         return try {
-            httpClient.get("https://$host:8080/api/users"){
+            httpClient.get("$baseURL/usr/users"){
                 header("Authorization", "Bearer $token")
             }.body<User>()
         } catch (_: Exception) {
@@ -102,7 +111,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     override suspend fun getFriendFriends(friendFriendId: Long): List<FriendUser> {
-        return httpClient.get("https://$host:8080/friends/$friendFriendId").body<List<FriendUser>>()
+        return httpClient.get("$baseURL/friends/$friendFriendId").body<List<FriendUser>>()
     }
 
     override suspend fun signUp(data: SignUpUser) {
@@ -110,7 +119,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         data.avatar?.compress(Bitmap.CompressFormat.PNG,100,stream)
         val avatar = stream.toByteArray()
         httpClient.submitFormWithBinaryData(
-            url = "https://$host:8080/signUp",
+            url = "$baseURL/auth/signUp",
             formData = formData {
                 append("name",data.userName)
                 append("password",data.password)
@@ -131,7 +140,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         login: String,
         password: String
     ): String {
-        return httpClient.post("https://$host:8080/signIn") {
+        return httpClient.post("$baseURL/auth/signIn") {
             contentType(ContentType.Application.Json)
             setBody(AuthRequest(login,password))
         }.body<String>()
@@ -142,7 +151,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         val stream = ByteArrayOutputStream()
         data.avatar?.compress(Bitmap.CompressFormat.PNG,100,stream)
         val avatar = stream.toByteArray()
-        return httpClient.patch("https://$host:8080/api/users") {
+        return httpClient.post("$baseURL/usr/users") {
             header(HttpHeaders.Authorization, "Bearer $token")
             setBody(
                 MultiPartFormDataContent(
@@ -193,20 +202,20 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
     }
 
     override suspend fun getUserNames(): List<Users> {
-        return httpClient.get("https://$host:8080/users").body()
+        return httpClient.get("$baseURL/users").body()
     }
 
     override suspend fun addFriend(
         id: Long,
         token: String
     ) {
-        httpClient.get("https://$host:8080/api/friends/$id"){
+        httpClient.get("$baseURL/usr/friends/$id"){
             header("Authorization", "Bearer $token")
         }
     }
 
     override suspend fun deleteFriend(id: Long, token: String) {
-        httpClient.delete("https://$host:8080/api/friends/$id") {
+        httpClient.delete("$baseURL/usr/friends/$id") {
             header("Authorization", "Bearer $token")
         }
     }
@@ -215,7 +224,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         id: Long,
         token: String
     ) {
-        httpClient.delete("https://$host:8080/api/messages/$id"){ header("Authorization", "Bearer $token") }
+        httpClient.delete("$baseURL/msg/messages/$id"){ header("Authorization", "Bearer $token") }
     }
 
     override suspend fun sendMessage(
@@ -223,7 +232,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         token: String,
         receiverId: Long
     ): Message {
-        return httpClient.post("https://$host:8080/api/messages/$receiverId") {
+        return httpClient.post("$baseURL/msg/messages/$receiverId") {
             setBody(msg)
             header("Authorization", "Bearer $token")
             header("Content-Type","application/json")
@@ -234,7 +243,7 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
         msg: Message,
         token: String
     ) {
-        httpClient.patch("https://$host:8080/api/messages/${msg.id}"){
+        httpClient.patch("$baseURL/msg/messages/${msg.id}"){
             setBody(msg)
             header("Content-Type","application/json")
             header("Authorization", "Bearer $token")
@@ -243,11 +252,11 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
 
     override suspend fun startWebSocket(
         token: String,
-        onReceived: (User) -> Unit,
+        onReceived: (WebSocketResponse) -> Unit,
         onWebSocket: (DefaultClientWebSocketSession) -> Unit
     ){
         httpClient.webSocket(
-            urlString = "wss://$host:8080/api/ws",
+            urlString = "wss://${baseURL.substringAfter("://")}/msg/ws",
             request = { header("Authorization","Bearer $token") }
         ) {
             onWebSocket(this)
@@ -258,9 +267,6 @@ class ApiRepository(val httpClient: HttpClient): ApiRepo {
                             if(frame.readText()[0] == '{'){
                                 onReceived(json.decodeFromString(frame.readText()))
                             }
-                        }
-                        is Frame.Close -> {
-                            return@webSocket
                         }
                         else -> {}
                     }

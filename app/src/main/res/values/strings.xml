@@ -18,6 +18,7 @@
         <item>Enter a message…</item>
         <item>Edit</item>
         <item>Delete</item>
+        <item>There are no messages yet</item>
     </string-array>
 
     <string-array name="profile_cnt">

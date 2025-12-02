@@ -4,9 +4,11 @@ import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -56,7 +58,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.valentinilk.shimmer.shimmer
 import org.app.glimpse.R
 import org.app.glimpse.Route
 import org.app.glimpse.data.network.ApiState
@@ -225,7 +230,7 @@ fun FriendCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy((windowInfo.containerSize.width/80).dp)
         ){
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = f.avatar,
                 contentDescription = f.name,
                 imageLoader = ImageLoader.Builder(context)
@@ -235,6 +240,15 @@ fun FriendCard(
                     .size((windowInfo.containerSize.width / 12).dp)
                     .clip(RoundedCornerShape(24.dp)),
                 contentScale = ContentScale.FillBounds,
+                loading = {
+                    Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                },
+                error = {
+                    Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                },
+                success = {
+                    SubcomposeAsyncImageContent()
+                }
             )
             Text(
                 text = f.name,

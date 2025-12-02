@@ -22,4 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Glimpse"
 include(":app")
- 
+

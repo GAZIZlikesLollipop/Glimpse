@@ -1,9 +1,12 @@
 package org.app.glimpse.pressentation.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,8 +27,10 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.valentinilk.shimmer.shimmer
 import org.app.glimpse.R
 
 @Composable
@@ -43,7 +48,7 @@ fun ChatCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = friend.avatar,
             contentDescription = "",
             imageLoader = ImageLoader.Builder(context)
@@ -53,7 +58,16 @@ fun ChatCard(
             modifier = Modifier
                 .size((windowInfo.containerSize.width / 18).dp)
                 .clip(RoundedCornerShape(25.dp))
-                .clickable { onProfile() }
+                .clickable { onProfile() },
+            loading = {
+                Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+            },
+            error = {
+                Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+            },
+            success = {
+                SubcomposeAsyncImageContent()
+            }
         )
         Text(
             text = friend.name,

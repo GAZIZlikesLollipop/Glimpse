@@ -56,7 +56,9 @@ class ApiViewModel(
     ) {
         viewModelScope.launch {
             _geocoderState.value = try {
-                ApiState.Success(apiRepository.getLocation(longitude, latitude,17, "${Locale.getDefault().language.lowercase(Locale.ROOT)}_${Locale.getDefault().country.uppercase(Locale.ROOT)}").name)
+                withContext(Dispatchers.IO) {
+                    ApiState.Success(apiRepository.getLocation(longitude, latitude,17, "${Locale.getDefault().language.lowercase(Locale.ROOT)}_${Locale.getDefault().country.uppercase(Locale.ROOT)}").name)
+                }
             } catch (_: Exception){
                 ApiState.Error
             }
@@ -65,6 +67,9 @@ class ApiViewModel(
 
     private val _userData: MutableStateFlow<ApiState> = MutableStateFlow(ApiState.Initial)
     val userData = _userData.asStateFlow()
+
+    private val _chatMessages: MutableStateFlow<ApiState> = MutableStateFlow(ApiState.Initial)
+    val chatMessages = _chatMessages.asStateFlow()
 
     val you = userDataRepository.userData
         .stateIn(
@@ -96,7 +101,22 @@ class ApiViewModel(
 
     fun setUserLang(lang: String){
         viewModelScope.launch {
-            userPreferencesRepository.setUserLang(lang)
+            withContext(Dispatchers.IO) { // Добавлено
+                userPreferencesRepository.setUserLang(lang)
+            }
+        }
+    }
+
+    fun getChatMessages(receiverId: Long){
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO){
+                    _chatMessages.value = ApiState.Success(apiRepository.getChatMessages(token.value,receiverId))
+                }
+            } catch(e: Exception){
+                Log.e("CHAT_MESSAGES",e.localizedMessage ?: "Ошибка получения ответа от сервера")
+                _chatMessages.value = ApiState.Error
+            }
         }
     }
 
@@ -107,23 +127,29 @@ class ApiViewModel(
         _userData.value = ApiState.Loading
         viewModelScope.launch {
             try {
-                val toka = apiRepository.signIn(userName,password)
-                userPreferencesRepository.setToken(toka.substring(1,toka.length-1))
+                withContext(Dispatchers.IO){
+                    val toka = apiRepository.signIn(userName,password)
+                    userPreferencesRepository.setToken(toka.substring(1,toka.length-1))
+                }
             } catch (e: Exception) {
                 _userData.value = ApiState.Error
                 Log.e("TOKEN", e.localizedMessage ?: "")
             }
-            while(token.value.isBlank()){
-                delay(100)
+            withContext(Dispatchers.IO){
+                while(token.value.isBlank()){
+                    delay(250)
+                }
             }
             try {
-                val data = apiRepository.getUserData(token.value)!!
-                _userData.value = ApiState.Success(data)
-                userDataRepository.setUserDataNet(data)
-                userPreferencesRepository.setStartRoute(Route.Main.route)
+                withContext(Dispatchers.IO) {
+                    val data = apiRepository.getUserData(token.value)!!
+                    _userData.value = ApiState.Success(data)
+                    userDataRepository.setUserDataNet(data)
+                    userPreferencesRepository.setStartRoute(Route.Main.route)
+                }
             } catch(e: Exception) {
                 _userData.value = ApiState.Error
-                Log.e("USERDATA", e.localizedMessage ?: "")
+                Log.e("SIGNIN", e.localizedMessage ?: "")
             }
         }
     }
@@ -131,23 +157,26 @@ class ApiViewModel(
     fun getFriendFriends(mutFriendId: Int){
         viewModelScope.launch {
             try {
-                val user = ((userData.value as ApiState.Success).data as User)
-                var friendId = 0
-                for(f in user.friends) {
-                    if(f.friends?.get(mutFriendId) != null){
-                        friendId = user.friends.indexOf(f)
+                withContext(Dispatchers.IO) { // Добавлено
+                    val user = ((userData.value as ApiState.Success).data as User)
+                    var friendId = 0
+                    for(f in user.friends) {
+                        if(f.friends?.get(mutFriendId) != null){
+                            friendId = user.friends.indexOf(f)
+                        }
                     }
+                    val friendsNet = apiRepository.getFriendFriends(user.friends[friendId].friends?.get(mutFriendId)!!.id)
+                    val friendNet = user.friends[friendId].friends?.get(mutFriendId)?.copy(friends = friendsNet)
+                    val friendMap = user.friends[friendId].friends?.toMutableList().apply { this?.set(mutFriendId, friendNet!!) }
+                    val updatedFriends = user.friends.toMutableList().apply { this[friendId] = this[friendId].copy(friends = friendMap) }
+                    _userData.value = ApiState.Success(user.copy(friends = updatedFriends))
                 }
-                val friendsNet = apiRepository.getFriendFriends(user.friends[friendId].friends?.get(mutFriendId)!!.id)
-                val friendNet = user.friends[friendId].friends?.get(mutFriendId)?.copy(friends = friendsNet)
-                val friendMap = user.friends[friendId].friends?.toMutableList().apply { this?.set(mutFriendId, friendNet!!) }
-                val updatedFriends = user.friends.toMutableList().apply { this[friendId] = this[friendId].copy(friends = friendMap) }
-                _userData.value = ApiState.Success(user.copy(friends = updatedFriends))
             } catch(e: Exception) {
                 Log.e("friends",e.localizedMessage ?: "")
             }
         }
     }
+
     fun signUp(
         userName: String,
         password: String,
@@ -160,39 +189,47 @@ class ApiViewModel(
         _userData.value = ApiState.Loading
         viewModelScope.launch {
             try {
-                apiRepository.signUp(
-                    SignUpUser(
-                        userName = userName,
-                        password = password,
-                        bio = about ?: "",
-                        avatar = avatar,
-                        avatarExt = avatarExt,
-                        latitude,
-                        longitude
+                withContext(Dispatchers.IO){
+                    apiRepository.signUp(
+                        SignUpUser(
+                            userName = userName,
+                            password = password,
+                            bio = about ?: "",
+                            avatar = avatar,
+                            avatarExt = avatarExt,
+                            latitude,
+                            longitude
+                        )
                     )
-                )
+                }
             } catch (e: Exception) {
                 _userData.value = ApiState.Error
                 Log.e("SIGNUP", e.localizedMessage ?: "")
             }
             try {
-                val toka = apiRepository.signIn(userName,password)
-                userPreferencesRepository.setToken(toka.substring(1,toka.length-1))
+                withContext(Dispatchers.IO){
+                    val toka = apiRepository.signIn(userName,password)
+                    userPreferencesRepository.setToken(toka.substring(1,toka.length-1))
+                }
             } catch (e: Exception) {
                 _userData.value = ApiState.Error
                 Log.e("TOKEN", e.localizedMessage ?: "")
             }
-            while(token.value.isBlank()){
-                delay(100)
+            withContext(Dispatchers.IO) {
+                while (token.value.isBlank()) {
+                    delay(100)
+                }
             }
             try {
-                val data = apiRepository.getUserData(token.value)!!
-                _userData.value = ApiState.Success(data)
-                userDataRepository.setUserDataNet(data)
-                userPreferencesRepository.setStartRoute(Route.Main.route)
+                withContext(Dispatchers.IO){
+                    val data = apiRepository.getUserData(token.value)!!
+                    _userData.value = ApiState.Success(data)
+                    userDataRepository.setUserDataNet(data)
+                    userPreferencesRepository.setStartRoute(Route.Main.route)
+                }
             } catch(e: Exception) {
                 _userData.value = ApiState.Error
-                Log.e("USERDATA", e.localizedMessage ?: "")
+                Log.e("SIGNUP", e.localizedMessage ?: "")
             }
         }
     }
@@ -232,32 +269,6 @@ class ApiViewModel(
                 )
             )
         }
-        val sentMessages = mutableListOf<Message>()
-        for(msg in data.sentMessagesList){
-            sentMessages.add(
-                Message(
-                    id = msg.id,
-                    content = msg.content,
-                    senderId = msg.senderId,
-                    receiverId = msg.receivedId,
-                    createdAt = msg.createdAt,
-                    updatedAt = msg.updatedAt
-                )
-            )
-        }
-        val receivedMessages = mutableListOf<Message>()
-        for(msg in data.receivedMessagesList){
-            receivedMessages.add(
-                Message(
-                    id = msg.id,
-                    content = msg.content,
-                    senderId = msg.senderId,
-                    receiverId = msg.receivedId,
-                    createdAt = msg.createdAt,
-                    updatedAt = msg.updatedAt
-                )
-            )
-        }
         _userData.value = ApiState.Success(
             User(
                 id = data.id,
@@ -268,30 +279,29 @@ class ApiViewModel(
                 latitude = data.latitude,
                 longitude = data.longitude,
                 friends = friends,
-                sentMessages = sentMessages,
-                receivedMessages = receivedMessages,
                 createdAt = data.createdAt,
                 updatedAt = data.updatedAt
             )
         )
-
     }
-
 
     fun deleteAccount() {
         viewModelScope.launch {
-            apiRepository.deleteAccount(token.value)
-            webSocketCnn!!.send(Frame.Text(""))
-            _userData.value = ApiState.Initial
-            userDataRepository.setUserData(UserData.getDefaultInstance())
-            userPreferencesRepository.setStartRoute(Route.Login.route)
+            withContext(Dispatchers.IO){
+                apiRepository.deleteAccount(token.value)
+                webSocketCnn?.send(Frame.Text(""))
+                _userData.value = ApiState.Initial
+                userDataRepository.setUserData(UserData.getDefaultInstance())
+            }
         }
     }
 
     fun setRoute(route: String){
         viewModelScope.launch {
             _userData.value = ApiState.Initial
-            userPreferencesRepository.setStartRoute(route)
+            withContext(Dispatchers.IO) { // Добавлено
+                userPreferencesRepository.setStartRoute(route)
+            }
         }
     }
 
@@ -300,29 +310,36 @@ class ApiViewModel(
     ){
         viewModelScope.launch {
             try {
-                val response = apiRepository.updateUserData(token.value,data)
-                _userData.value = ApiState.Success(response)
-                userDataRepository.setUserDataNet(response)
-                webSocketCnn!!.send(Frame.Text(""))
+                withContext(Dispatchers.IO){
+                    val response = apiRepository.updateUserData(token.value,data)
+                    _userData.value = ApiState.Success(response)
+                    userDataRepository.setUserDataNet(response)
+                    webSocketCnn?.send(Frame.Text(""))
+                }
             } catch(e: Exception) {
                 Log.e("Update",e.localizedMessage ?: "")
             }
         }
     }
+
     val userNames = mutableStateListOf<Users>()
     fun getUserNames() {
-       viewModelScope.launch {
-           userNames.clear()
-           userNames.addAll(apiRepository.getUserNames())
-       }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO){
+                userNames.clear()
+                userNames.addAll(apiRepository.getUserNames())
+            }
+        }
     }
 
     fun addFriend(id: Long) {
         viewModelScope.launch {
             try {
-                apiRepository.addFriend(id,token.value)
-                _userData.value = ApiState.Success(apiRepository.getUserData(token.value)!!)
-                webSocketCnn!!.send(Frame.Text(""))
+                withContext(Dispatchers.IO){
+                    apiRepository.addFriend(id,token.value)
+                    _userData.value = ApiState.Success(apiRepository.getUserData(token.value)!!)
+                    webSocketCnn?.send(Frame.Text(""))
+                }
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
             }
@@ -332,30 +349,39 @@ class ApiViewModel(
     fun deleteFriend(id: Long) {
         viewModelScope.launch {
             try {
-                apiRepository.deleteFriend(id,token.value)
-                val resp = apiRepository.getUserData(token.value)!!
-                _userData.value = ApiState.Success(resp)
-                userDataRepository.setUserDataNet(resp)
-                webSocketCnn!!.send(Frame.Text(""))
+                withContext(Dispatchers.IO){
+                    apiRepository.deleteFriend(id,token.value)
+                    val resp = apiRepository.getUserData(token.value)!!
+                    _userData.value = ApiState.Success(resp)
+                    userDataRepository.setUserDataNet(resp)
+                    webSocketCnn?.send(Frame.Text(""))
+                    setRoute(Route.Login.route)
+                }
             } catch(e: Exception) {
                 Log.e("FRIEND", e.localizedMessage ?: "")
             }
         }
     }
+
     fun clearData(){
         viewModelScope.launch {
             _userData.value = ApiState.Initial
-            userDataRepository.setUserData(UserData.getDefaultInstance())
+            withContext(Dispatchers.IO) { // Добавлено
+                userDataRepository.setUserData(UserData.getDefaultInstance())
+            }
         }
     }
+
     fun getOwnData(callback: () -> Unit){
         _userData.value = ApiState.Loading
         viewModelScope.launch {
             try {
-                val res = apiRepository.getUserData(token.value)
-                if(res != null) {
-                    userDataRepository.setUserDataNet(res)
-                    _userData.value = ApiState.Success(res)
+                withContext(Dispatchers.IO){
+                    val res = apiRepository.getUserData(token.value)
+                    if(res != null) {
+                        userDataRepository.setUserDataNet(res)
+                        _userData.value = ApiState.Success(res)
+                    }
                 }
             } catch(e: Exception) {
                 Log.e("OWNDATA",e.localizedMessage ?: "")
@@ -368,19 +394,24 @@ class ApiViewModel(
             }
         }
     }
+
     fun startWebSocket(){
         viewModelScope.launch {
             try {
-                apiRepository.startWebSocket(
-                    token.value,
-                    {
-                        viewModelScope.launch {
-                            userDataRepository.setUserDataNet(it)
-                            _userData.value = ApiState.Success(it)
-                        }
-                    },
-                    { webSocketCnn = it }
-                )
+                withContext(Dispatchers.IO) {
+                    apiRepository.startWebSocket(
+                        token.value,
+                        {
+                            viewModelScope.launch {
+                                userDataRepository.setUserDataNet(it.user)
+                                _userData.value = ApiState.Success(it.user)
+                                _chatMessages.value = ApiState.Loading
+                                _chatMessages.value = ApiState.Success(it.messages)
+                            }
+                        },
+                        { webSocketCnn = it }
+                    )
+                }
             } catch (e: Exception){
                 Log.e("WEBSOCKET",e.localizedMessage ?: "")
             }
@@ -394,7 +425,7 @@ class ApiViewModel(
         return viewModelScope.async {
             withContext(Dispatchers.IO) {
                 while(webSocketCnn == null){
-                    delay(100)
+                    delay(250)
                 }
             }
             withContext(Dispatchers.IO) {
@@ -404,10 +435,7 @@ class ApiViewModel(
                         token = token.value,
                         receiverId = receiverId
                     )
-                    val data = apiRepository.getUserData(token.value)!!
-                    _userData.value = ApiState.Success(data)
-                    userDataRepository.setUserDataNet(data)
-                    webSocketCnn!!.send(Frame.Text(""))
+                    webSocketCnn?.send(Frame.Text("$receiverId"))
                     result
                 } catch (e: Exception) {
                     Log.e("msg", e.localizedMessage ?: "")
@@ -416,14 +444,17 @@ class ApiViewModel(
             }
         }
     }
-    fun deleteMessage(msgId: Long){
+
+    fun deleteMessage(
+        msgId: Long,
+        friendId: Long
+    ){
         viewModelScope.launch {
             try {
-                apiRepository.deleteMessage(msgId,token.value)
-                val data = apiRepository.getUserData(token.value)!!
-                _userData.value = ApiState.Success(data)
-                userDataRepository.setUserDataNet(data)
-                webSocketCnn!!.send(Frame.Text(""))
+                withContext(Dispatchers.IO){
+                    apiRepository.deleteMessage(msgId,token.value)
+                    webSocketCnn?.send(Frame.Text("$friendId"))
+                }
             } catch (e: Exception) {
                 Log.e("DELETE_MSG", e.localizedMessage ?: "")
             }
@@ -432,20 +463,21 @@ class ApiViewModel(
 
     fun updateMessage(
         id: Long,
-        content: String
+        content: String,
+        friendId: Long
     ){
         viewModelScope.launch {
             try {
-               apiRepository.updateMessage(Message(id,content),token.value)
-                val data = apiRepository.getUserData(token.value)!!
-                _userData.value = ApiState.Success(data)
-                userDataRepository.setUserDataNet(data)
-                webSocketCnn!!.send(Frame.Text(""))
+                withContext(Dispatchers.IO){
+                    apiRepository.updateMessage(Message(id,content),token.value)
+                    webSocketCnn?.send(Frame.Text("$friendId"))
+                }
             } catch (e: Exception){
                 Log.e("UPDATEMSG", e.localizedMessage ?: "")
             }
         }
     }
+
     private val _mapState = MutableStateFlow(
         CameraPosition(Point(
             if(you.value.latitude == 0.0) 41.311286 else you.value.latitude,
@@ -453,6 +485,7 @@ class ApiViewModel(
         ),15f,0f,0f)
     )
     val mapState = _mapState.asStateFlow()
+
     fun editMapState(state: CameraPosition){
         _mapState.value = state
     }

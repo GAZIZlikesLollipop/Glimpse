@@ -37,8 +37,6 @@ data class User(
     val latitude: Double,
     val longitude: Double,
     val friends: List<FriendUser>,
-    val sentMessages: List<Message>,
-    val receivedMessages: List<Message>,
     @SerialName("created_at")val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
     @SerialName("updated_at")val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
 )
@@ -55,6 +53,12 @@ data class FriendUser(
     val friends: List<FriendUser>? = null,
     @SerialName("created_at") val createdAt: Long = Clock.System.now().toEpochMilliseconds(),
     @SerialName("updated_at") val updatedAt: Long = Clock.System.now().toEpochMilliseconds()
+)
+
+@Serializable
+data class WebSocketResponse(
+    val user: User,
+    val messages: List<Message>
 )
 
 @Serializable

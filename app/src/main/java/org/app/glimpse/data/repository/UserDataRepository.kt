@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.datastore.dataStore
 import kotlinx.coroutines.flow.Flow
 import org.app.glimpse.FriendUser
-import org.app.glimpse.Message
 import org.app.glimpse.UserData
 import org.app.glimpse.data.UserDataSerializer
 import org.app.glimpse.data.network.User
@@ -32,58 +31,30 @@ class UserDataRepository(context: Context): UserDataRepo {
         for(friend in data.friends) {
             val friendsFriend = mutableListOf<FriendUser>()
             for(friendFriend in friend.friends!!){
-                val data = friendFriend
                 friendsFriend.add(
                     FriendUser.newBuilder()
-                        .setId(data.id)
-                        .setName(data.name)
-                        .setBio(data.bio)
-                        .setAvatar(data.avatar)
-                        .setLatitude(data.latitude)
-                        .setLongitude(data.longitude)
-                        .setCreatedAt(data.createdAt)
-                        .setUpdatedAt(data.updatedAt)
+                        .setId(friendFriend.id)
+                        .setName(friendFriend.name)
+                        .setBio(friendFriend.bio)
+                        .setAvatar(friendFriend.avatar)
+                        .setLatitude(friendFriend.latitude)
+                        .setLongitude(friendFriend.longitude)
+                        .setCreatedAt(friendFriend.createdAt)
+                        .setUpdatedAt(friendFriend.updatedAt)
                         .build()
                 )
             }
-            val data = friend
             friends.add(
                 FriendUser.newBuilder()
-                    .setId(data.id)
-                    .setName(data.name)
-                    .setBio(data.bio)
-                    .setAvatar(data.avatar)
-                    .setLatitude(data.latitude)
-                    .setLongitude(data.longitude)
+                    .setId(friend.id)
+                    .setName(friend.name)
+                    .setBio(friend.bio)
+                    .setAvatar(friend.avatar)
+                    .setLatitude(friend.latitude)
+                    .setLongitude(friend.longitude)
                     .addAllFriends(friendsFriend)
-                    .setCreatedAt(data.createdAt)
-                    .setUpdatedAt(data.updatedAt)
-                    .build()
-            )
-        }
-        val receivedMessages = mutableListOf<Message>()
-        for(msg in data.receivedMessages){
-            receivedMessages.add(
-                Message.newBuilder()
-                    .setId(msg.id)
-                    .setContent(msg.content)
-                    .setSenderId(msg.senderId ?: 0)
-                    .setReceivedId(msg.receiverId ?: 0)
-                    .setCreatedAt(msg.createdAt)
-                    .setUpdatedAt(msg.updatedAt)
-                    .build()
-            )
-        }
-        val sentMessages = mutableListOf<Message>()
-        for(msg in data.sentMessages){
-            sentMessages.add(
-                Message.newBuilder()
-                    .setId(msg.id)
-                    .setContent(msg.content)
-                    .setSenderId(msg.senderId ?: 0)
-                    .setReceivedId(msg.receiverId ?: 0)
-                    .setCreatedAt(msg.createdAt)
-                    .setUpdatedAt(msg.updatedAt)
+                    .setCreatedAt(friend.createdAt)
+                    .setUpdatedAt(friend.updatedAt)
                     .build()
             )
         }
@@ -97,8 +68,6 @@ class UserDataRepository(context: Context): UserDataRepo {
                 .setLatitude(data.latitude)
                 .setLongitude(data.longitude)
                 .addAllFriends(friends)
-                .addAllSentMessages(sentMessages)
-                .addAllReceivedMessages(receivedMessages)
                 .setCreatedAt(data.createdAt)
                 .setUpdatedAt(data.updatedAt)
                 .build()

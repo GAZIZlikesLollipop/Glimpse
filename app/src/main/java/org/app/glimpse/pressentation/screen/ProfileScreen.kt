@@ -97,7 +97,11 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import com.valentinilk.shimmer.shimmer
 import org.app.glimpse.R
 import org.app.glimpse.Route
@@ -300,7 +304,7 @@ fun ProfileScreen(
                                 Button(
                                     onClick = {
                                         apiViewModel.deleteFriend(userId)
-                                        navController.navigate(Route.Main.route)
+                                        navController.navigate(Route.Login.route)
                                     },
                                     shape = RoundedCornerShape(20.dp),
                                     contentPadding = PaddingValues(0.dp),
@@ -332,8 +336,10 @@ fun ProfileScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.padding(horizontal = 16.dp)
                                     ) {
-                                        AsyncImage(
-                                            model = userData.avatar,
+                                        val timestamp = System.currentTimeMillis()
+                                        val imageURL = "${userData.avatar}?t=$timestamp"
+                                        SubcomposeAsyncImage(
+                                            model = imageURL,
                                             imageLoader = ImageLoader.Builder(context)
                                                 .components {
                                                     add(
@@ -347,6 +353,15 @@ fun ProfileScreen(
                                             contentScale = ContentScale.FillBounds,
                                             modifier = Modifier.size((windowInfo.containerSize.width / 5).dp)
                                                 .clip(RoundedCornerShape(20.dp)),
+                                            loading = {
+                                                Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                                            },
+                                            error = {
+                                                Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                                            },
+                                            success = {
+                                                SubcomposeAsyncImageContent()
+                                            }
                                         )
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
@@ -469,7 +484,7 @@ fun ProfileScreen(
                                                         horizontalArrangement = Arrangement.SpaceBetween
                                                     ) {
                                                         Box(Modifier.weight(0.7f).padding(12.dp)) {
-                                                            AsyncImage(
+                                                            SubcomposeAsyncImage(
                                                                 model = f.avatar,
                                                                 contentDescription = null,
                                                                 imageLoader = ImageLoader.Builder(
@@ -486,7 +501,16 @@ fun ProfileScreen(
                                                                 contentScale = ContentScale.FillBounds,
                                                                 modifier = Modifier
                                                                     .size((windowInfo.containerSize.width / 17).dp)
-                                                                    .clip(RoundedCornerShape(16.dp))
+                                                                    .clip(RoundedCornerShape(16.dp)),
+                                                                loading = {
+                                                                    Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                                                                },
+                                                                error = {
+                                                                    Box(Modifier.fillMaxSize().shimmer().background(MaterialTheme.colorScheme.onBackground))
+                                                                },
+                                                                success = {
+                                                                    SubcomposeAsyncImageContent()
+                                                                }
                                                             )
                                                         }
                                                         Text(
@@ -607,7 +631,9 @@ fun ProfileScreen(
                                             val inta = Intent(context, LocationTrackingService::class.java).apply { action = Actions.STOP_TRACKING.name }
                                             ContextCompat.startForegroundService(context, inta)
                                             navController.navigate(Route.Login.route)
+                                            apiViewModel.setRoute(Route.Login.route)
                                             apiViewModel.deleteAccount()
+                                            apiViewModel.isFirst = true
                                         },
                                         colors = ButtonDefaults.buttonColors(
                                             MaterialTheme.colorScheme.error
